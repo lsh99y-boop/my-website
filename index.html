@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Supabase 연결 테스트</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 640px; margin: 60px auto; padding: 0 20px; line-height: 1.6; }
+    h1 { font-size: 1.3rem; }
+    #status { padding: 14px 16px; border-radius: 8px; font-weight: 600; }
+    .ok   { background: #e6f7ed; color: #067d3b; }
+    .fail { background: #fdecea; color: #b3261e; }
+    .wait { background: #eef1f5; color: #555; }
+    code { background: #f2f4f7; padding: 1px 5px; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <h1>Supabase 연결 상태</h1>
+  <p id="status" class="wait">확인 중…</p>
+  <p>프로젝트: <code>corgddhyokbylsfdclps.supabase.co</code></p>
+
+  <script type="module">
+    import { supabase, SUPABASE_URL } from "./supabaseClient.js";
+
+    const el = document.getElementById("status");
+
+    // 클라이언트가 정상 생성되고 프로젝트에 도달하는지 가볍게 확인.
+    // (아직 테이블이 없어도 Auth 엔드포인트 응답으로 연결 자체를 검증)
+    try {
+      const { error } = await supabase.auth.getSession();
+      if (error) throw error;
+      el.textContent = "✅ 연결 성공 — Supabase 클라이언트 준비 완료";
+      el.className = "ok";
+      console.log("Supabase client ready:", SUPABASE_URL);
+    } catch (e) {
+      el.textContent = "❌ 연결 실패: " + (e.message || e);
+      el.className = "fail";
+      console.error(e);
+    }
+  </script>
+</body>
+</html>
