@@ -3,6 +3,17 @@
 Thumbs.db
 .vscode/
 
-# node (나중에 빌드 도구 쓸 경우 대비)
+# node
 node_modules/
 .vercel/
+
+# 원본 양식(대용량 24MB) — 배포 불필요, 로컬 보관
+26년_07월 업무일지.hwpx
+
+# 템플릿 빌드 중간물 / 테스트 산출물
+template/work/
+template/_*.hwpx
+template/_*.pdf
+template/*.pdf
+template/*.png
+template/_*.png

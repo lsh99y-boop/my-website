@@ -3,40 +3,133 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Supabase 연결 테스트</title>
+  <title>일일업무일지 작성</title>
   <style>
-    body { font-family: system-ui, sans-serif; max-width: 640px; margin: 60px auto; padding: 0 20px; line-height: 1.6; }
-    h1 { font-size: 1.3rem; }
-    #status { padding: 14px 16px; border-radius: 8px; font-weight: 600; }
-    .ok   { background: #e6f7ed; color: #067d3b; }
-    .fail { background: #fdecea; color: #b3261e; }
-    .wait { background: #eef1f5; color: #555; }
-    code { background: #f2f4f7; padding: 1px 5px; border-radius: 4px; }
+    :root { --line:#d7dbe0; --bg:#f6f8fa; --accent:#2f6fed; }
+    * { box-sizing: border-box; }
+    body { font-family: system-ui, "Malgun Gothic", sans-serif; margin: 0; background: var(--bg); color: #1a2230; }
+    header { background: #fff; border-bottom: 1px solid var(--line); padding: 16px 20px; }
+    header h1 { font-size: 1.15rem; margin: 0; }
+    header p { margin: 4px 0 0; color: #667; font-size: .85rem; }
+    main { max-width: 900px; margin: 22px auto; padding: 0 16px 60px; }
+    .card { background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 18px; margin-bottom: 16px; }
+    .row { display: flex; gap: 14px; flex-wrap: wrap; align-items: end; }
+    .field { display: flex; flex-direction: column; gap: 5px; }
+    label { font-size: .82rem; color: #445; font-weight: 600; }
+    input, textarea { font: inherit; border: 1px solid var(--line); border-radius: 7px; padding: 8px 10px; background: #fff; }
+    input:focus, textarea:focus { outline: 2px solid var(--accent); border-color: var(--accent); }
+    textarea { width: 100%; min-height: 70px; resize: vertical; line-height: 1.5; }
+    .facility { margin-bottom: 12px; }
+    .facility label { display: block; margin-bottom: 5px; font-size: .9rem; color: #1a2230; }
+    .facility .hint { color: #8a94a3; font-weight: 400; font-size: .78rem; }
+    .bar { position: sticky; bottom: 0; background: #fff; border-top: 1px solid var(--line);
+           padding: 14px 16px; display: flex; gap: 12px; align-items: center; justify-content: flex-end; }
+    button { font: inherit; font-weight: 600; border: 0; border-radius: 8px; padding: 11px 20px; cursor: pointer; }
+    .primary { background: var(--accent); color: #fff; }
+    .primary:disabled { opacity: .5; cursor: default; }
+    #status { margin-right: auto; font-size: .88rem; color: #667; }
+    #status.ok { color: #067d3b; } #status.err { color: #b3261e; }
   </style>
 </head>
 <body>
-  <h1>Supabase 연결 상태</h1>
-  <p id="status" class="wait">확인 중…</p>
-  <p>프로젝트: <code>corgddhyokbylsfdclps.supabase.co</code></p>
+  <header>
+    <h1>📋 일일업무일지 작성</h1>
+    <p>대전총국 송출센터 · 입력 후 한글파일(.hwpx)로 다운로드</p>
+  </header>
+
+  <main>
+    <div class="card">
+      <div class="row">
+        <div class="field">
+          <label for="date">날짜</label>
+          <input type="date" id="date" />
+        </div>
+        <div class="field">
+          <label for="weekday">요일</label>
+          <input type="text" id="weekday" style="width:70px" readonly />
+        </div>
+        <div class="field" style="flex:1; min-width:160px">
+          <label for="weather">날씨</label>
+          <input type="text" id="weather" placeholder="예: 맑음" />
+        </div>
+      </div>
+    </div>
+
+    <div class="card" id="facilities">
+      <!-- 업무구분 8칸 -->
+    </div>
+  </main>
+
+  <div class="bar">
+    <span id="status"></span>
+    <button class="primary" id="download">한글파일 다운로드</button>
+  </div>
 
   <script type="module">
-    import { supabase, SUPABASE_URL } from "./supabaseClient.js";
+    import { buildHwpx, downloadBlob } from "./hwpx.js";
 
-    const el = document.getElementById("status");
+    const FACILITIES = [
+      ["C_song",   "송출기술"],
+      ["C_tvram",  "TVR / AM"],
+      ["C_gr",     "계룡산(송)"],
+      ["C_sj",     "식장산(중)"],
+      ["C_hs",     "흑성산(중)"],
+      ["C_wh",     "원효봉(중)"],
+      ["C_minwon", "민원사항"],
+      ["C_teuki",  "특기사항"],
+    ];
+    const WD = ["일","월","화","수","목","금","토"];
 
-    // 클라이언트가 정상 생성되고 프로젝트에 도달하는지 가볍게 확인.
-    // (아직 테이블이 없어도 Auth 엔드포인트 응답으로 연결 자체를 검증)
-    try {
-      const { error } = await supabase.auth.getSession();
-      if (error) throw error;
-      el.textContent = "✅ 연결 성공 — Supabase 클라이언트 준비 완료";
-      el.className = "ok";
-      console.log("Supabase client ready:", SUPABASE_URL);
-    } catch (e) {
-      el.textContent = "❌ 연결 실패: " + (e.message || e);
-      el.className = "fail";
-      console.error(e);
+    // 시설 입력칸 생성
+    const fc = document.getElementById("facilities");
+    for (const [key, label] of FACILITIES) {
+      const div = document.createElement("div");
+      div.className = "facility";
+      div.innerHTML = `<label>${label} <span class="hint">(여러 줄 입력 가능 · 빈칸은 ◎만 표시)</span></label>
+        <textarea data-key="${key}" placeholder="업무 추진 내용..."></textarea>`;
+      fc.appendChild(div);
     }
+
+    // 날짜 → 요일 자동
+    const dateEl = document.getElementById("date");
+    const wdEl = document.getElementById("weekday");
+    function syncWeekday() {
+      if (!dateEl.value) { wdEl.value = ""; return; }
+      const d = new Date(dateEl.value + "T00:00:00");
+      wdEl.value = WD[d.getDay()];
+    }
+    dateEl.addEventListener("change", syncWeekday);
+    // 기본값: 오늘
+    dateEl.value = new Date().toISOString().slice(0, 10);
+    syncWeekday();
+
+    const status = document.getElementById("status");
+    function setStatus(msg, cls) { status.textContent = msg; status.className = cls || ""; }
+
+    document.getElementById("download").addEventListener("click", async (e) => {
+      const btn = e.currentTarget;
+      if (!dateEl.value) { setStatus("날짜를 선택하세요.", "err"); return; }
+      const [Y, M, D] = dateEl.value.split("-");
+      const data = {
+        MM: M, DD: D, WD: wdEl.value, WX: document.getElementById("weather").value,
+      };
+      for (const ta of document.querySelectorAll("textarea[data-key]"))
+        data[ta.dataset.key] = ta.value;
+
+      btn.disabled = true;
+      setStatus("생성 중…");
+      try {
+        const blob = await buildHwpx(data);
+        const fname = `일일업무일지_${Y}년${M}월${D}일.hwpx`;
+        downloadBlob(blob, fname);
+        setStatus("✅ 다운로드 완료: " + fname, "ok");
+      } catch (err) {
+        console.error(err);
+        setStatus("❌ 오류: " + err.message, "err");
+      } finally {
+        btn.disabled = false;
+      }
+    });
   </script>
 </body>
 </html>
