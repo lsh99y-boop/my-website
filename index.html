@@ -62,12 +62,14 @@
 
   <div class="bar">
     <span id="status"></span>
+    <button id="save" style="background:#e8eefc;color:#2f6fed">💾 저장</button>
     <button class="primary" id="download">한글파일 다운로드</button>
   </div>
 
   <script type="module">
     import { buildHwpx, downloadBlob } from "./hwpx.js";
     import { compressImage } from "./photo.js";
+    import { saveLog, loadLog } from "./storage.js";
 
     const FACILITIES = [
       ["C_song",   "송출기술"],
@@ -129,21 +131,56 @@
       });
     }
 
+    const status = document.getElementById("status");
+    function setStatus(msg, cls) { status.textContent = msg; status.className = cls || ""; }
+
     // 날짜 → 요일 자동
     const dateEl = document.getElementById("date");
     const wdEl = document.getElementById("weekday");
+    const weatherEl = document.getElementById("weather");
     function syncWeekday() {
       if (!dateEl.value) { wdEl.value = ""; return; }
-      const d = new Date(dateEl.value + "T00:00:00");
-      wdEl.value = WD[d.getDay()];
+      wdEl.value = WD[new Date(dateEl.value + "T00:00:00").getDay()];
     }
-    dateEl.addEventListener("change", syncWeekday);
-    // 기본값: 오늘
-    dateEl.value = new Date().toISOString().slice(0, 10);
-    syncWeekday();
 
-    const status = document.getElementById("status");
-    function setStatus(msg, cls) { status.textContent = msg; status.className = cls || ""; }
+    // 저장된 내용 불러와 폼 채우기
+    async function loadForDate() {
+      syncWeekday();
+      if (!dateEl.value) return;
+      try {
+        const log = await loadLog(dateEl.value);
+        // 내용 초기화 후 채움
+        weatherEl.value = log?.weather || "";
+        const c = (log && log.contents) || {};
+        for (const ta of document.querySelectorAll("textarea[data-key]"))
+          ta.value = c[ta.dataset.key] || "";
+        setStatus(log ? `📂 ${dateEl.value} 저장본 불러옴` : "", log ? "ok" : "");
+      } catch (err) {
+        setStatus("불러오기 오류: " + err.message + " (테이블 생성됐나요?)", "err");
+      }
+    }
+    dateEl.addEventListener("change", loadForDate);
+    dateEl.value = new Date().toISOString().slice(0, 10);
+    loadForDate();
+
+    // 저장 버튼
+    document.getElementById("save").addEventListener("click", async (e) => {
+      if (!dateEl.value) { setStatus("날짜를 선택하세요.", "err"); return; }
+      e.currentTarget.disabled = true;
+      setStatus("저장 중…");
+      try {
+        const contents = {};
+        for (const ta of document.querySelectorAll("textarea[data-key]"))
+          contents[ta.dataset.key] = ta.value;
+        await saveLog({ log_date: dateEl.value, weekday: wdEl.value, weather: weatherEl.value, contents });
+        setStatus(`✅ 저장 완료 (${dateEl.value})`, "ok");
+      } catch (err) {
+        console.error(err);
+        setStatus("❌ 저장 오류: " + err.message + " (테이블 생성 필요할 수 있음)", "err");
+      } finally {
+        e.currentTarget.disabled = false;
+      }
+    });
 
     document.getElementById("download").addEventListener("click", async (e) => {
       const btn = e.currentTarget;
