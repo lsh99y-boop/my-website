@@ -115,6 +115,57 @@ export async function buildHwpx(data, photosByKey = {}) {
   return await out.generateAsync({ type: "blob" });
 }
 
+// 하루 템플릿(문단들)에 한 날짜 데이터 채우기 (텍스트만, 사진 없음)
+const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
+function fillDay(tmpl, day) {
+  const [, M, D] = day.log_date.split("-");
+  const wd = day.weekday || WEEKDAYS[new Date(day.log_date + "T00:00:00").getDay()];
+  let s = tmpl;
+  s = fillLine(s, "{{MM}}", M);
+  s = fillLine(s, "{{DD}}", D);
+  s = fillLine(s, "{{WD}}", wd);
+  s = fillLine(s, "{{WX}}", day.weather || "");
+  const contents = day.contents || {};
+  for (const key of Object.keys(KEY_ROW)) s = fillFacility(s, key, contents[key] || "", []);
+  return s.replace(/\{\{[^}]+\}\}/g, "");
+}
+
+// 여러 날(days) → 하루 양식을 날짜순으로 이어붙인 한 파일 hwpx (텍스트만)
+export async function buildMonthHwpx(days) {
+  const buf = await fetch(TEMPLATE_URL).then((r) => {
+    if (!r.ok) throw new Error("템플릿 로드 실패: " + r.status);
+    return r.arrayBuffer();
+  });
+  const zip = await JSZip.loadAsync(buf);
+  const sec0 = await zip.file("Contents/section0.xml").async("string");
+
+  const decl = (sec0.match(/^<\?xml[^>]*\?>/) || ['<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>'])[0];
+  const rootOpen = sec0.match(/<hs:sec\b[^>]*>/)[0];
+  const bodyStart = sec0.indexOf(rootOpen) + rootOpen.length;
+  const bodyEnd = sec0.lastIndexOf("</hs:sec>");
+  const body = sec0.slice(bodyStart, bodyEnd);           // 하루 문단들(secPr 포함)
+  const secPr = (body.match(/<hp:secPr\b[\s\S]*?<\/hp:secPr>/) || [""])[0];
+  const bodyNoSec = secPr ? body.replace(secPr, "") : body; // secPr 뺀 하루(2일차부터)
+
+  let out = "";
+  days.forEach((day, i) => {
+    let tmpl = i === 0 ? body : bodyNoSec.replace('pageBreak="0"', 'pageBreak="1"'); // 2일차부터 새 페이지
+    out += fillDay(tmpl, day);
+  });
+  const newSec = decl + rootOpen + out + "</hs:sec>";
+
+  const files = [];
+  zip.forEach((path, f) => { if (!f.dir) files.push(path); });
+  const outZip = new JSZip();
+  outZip.file("mimetype", await zip.file("mimetype").async("uint8array"), { compression: "STORE" });
+  for (const path of files) {
+    if (path === "mimetype") continue;
+    if (path === "Contents/section0.xml") outZip.file(path, newSec, { compression: "DEFLATE" });
+    else outZip.file(path, await zip.file(path).async("uint8array"), { compression: "DEFLATE" });
+  }
+  return await outZip.generateAsync({ type: "blob" });
+}
+
 export function downloadBlob(blob, filename) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");

@@ -34,6 +34,21 @@ export async function listDates(limit = 60) {
   return data || [];
 }
 
+// 한 달치 불러오기 (yyyymm = "2026-08"), 날짜순
+export async function listMonth(yyyymm) {
+  const start = yyyymm + "-01";
+  const [y, m] = yyyymm.split("-").map(Number);
+  const next = m === 12 ? `${y + 1}-01-01` : `${y}-${String(m + 1).padStart(2, "0")}-01`;
+  const { data, error } = await supabase
+    .from("work_logs")
+    .select("*")
+    .gte("log_date", start)
+    .lt("log_date", next)
+    .order("log_date", { ascending: true });
+  if (error) throw error;
+  return data || [];
+}
+
 // N개월 지난 일지 자동 삭제 (기본 6개월). RLS가 오래된 행만 삭제 허용.
 export async function cleanupOld(months = 6) {
   const d = new Date();

@@ -58,6 +58,15 @@
     <div id="facilities">
       <!-- 시설별 카드(내용 + 사진) -->
     </div>
+
+    <div class="card" style="display:flex;gap:12px;align-items:end;flex-wrap:wrap">
+      <div class="field">
+        <label for="month">📅 한 달치 다운로드</label>
+        <input type="month" id="month" />
+      </div>
+      <button id="monthDownload" style="background:#e8eefc;color:#2f6fed;font-weight:600;border:0;border-radius:8px;padding:10px 18px;cursor:pointer">이 달 전체 한글파일</button>
+      <span style="color:#8a94a3;font-size:.78rem">저장된 날들을 날짜순으로 한 파일에 모아요 (텍스트)</span>
+    </div>
   </main>
 
   <div class="bar">
@@ -67,9 +76,9 @@
   </div>
 
   <script type="module">
-    import { buildHwpx, downloadBlob } from "./hwpx.js";
+    import { buildHwpx, buildMonthHwpx, downloadBlob } from "./hwpx.js";
     import { compressImage } from "./photo.js";
-    import { saveLog, loadLog, cleanupOld } from "./storage.js";
+    import { saveLog, loadLog, cleanupOld, listMonth } from "./storage.js";
 
     const FACILITIES = [
       ["C_song",   "송출기술"],
@@ -274,6 +283,30 @@
         let totKB = 0;
         for (const k in compressed) for (const p of compressed[k]) totKB += p.bytes.length;
         setStatus(`✅ 다운로드 완료: ${fname}` + (totalPhotos ? ` (사진 ${totalPhotos}장, ${(totKB / 1024).toFixed(0)}KB)` : ""), "ok");
+      } catch (err) {
+        console.error(err);
+        setStatus("❌ 오류: " + err.message, "err");
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    // 한 달치 다운로드
+    const monthEl = document.getElementById("month");
+    monthEl.value = dateEl.value.slice(0, 7);
+    document.getElementById("monthDownload").addEventListener("click", async (e) => {
+      const ym = monthEl.value;
+      if (!ym) { setStatus("월을 선택하세요.", "err"); return; }
+      const btn = e.currentTarget; btn.disabled = true;
+      setStatus("한 달치 불러오는 중…");
+      try {
+        const days = await listMonth(ym);
+        if (!days.length) { setStatus(`${ym} 에 저장된 일지가 없어요.`, "err"); return; }
+        setStatus(`한글파일 생성 중… (${days.length}일)`);
+        const blob = await buildMonthHwpx(days);
+        const [yy, mm] = ym.split("-");
+        downloadBlob(blob, `일일업무일지_${yy}년${mm}월.hwpx`);
+        setStatus(`✅ ${ym} 한 달치 다운로드 (${days.length}일)`, "ok");
       } catch (err) {
         console.error(err);
         setStatus("❌ 오류: " + err.message, "err");
