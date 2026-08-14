@@ -95,10 +95,10 @@
       div.className = "card";
       div.innerHTML = `
         <label>${label} <span class="hint" style="color:#8a94a3;font-weight:400;font-size:.78rem">(여러 줄 가능 · 빈칸은 ◎만 표시)</span></label>
-        <textarea data-key="${key}" placeholder="업무 추진 내용..." style="margin-top:6px"></textarea>
+        <textarea data-key="${key}" placeholder="업무 추진 내용...  (중간에 사진을 넣으려면 [사진1] 처럼 입력)" style="margin-top:6px"></textarea>
         <div style="margin-top:10px">
           <span style="font-size:.8rem;color:#556;font-weight:600">📷 사진</span>
-          <span class="hint" style="color:#8a94a3;font-size:.75rem">(선택 · 여러 장 · 자동 KB압축 · 내용 아래 삽입)</span>
+          <span class="hint" style="color:#8a94a3;font-size:.75rem">(선택 · 여러 장 · 자동 KB압축 · 마커 없으면 내용 아래에 붙음)</span>
           <input type="file" accept="image/*" multiple data-photo="${key}" style="display:block;margin-top:6px" />
           <div class="thumbs" data-thumbs="${key}" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;margin-top:8px"></div>
         </div>`;
@@ -108,19 +108,24 @@
     function renderThumbs(key) {
       const box = document.querySelector(`[data-thumbs="${key}"]`);
       box.innerHTML = "";
-      for (const item of photosByKey[key]) {
+      photosByKey[key].forEach((item, idx) => {
         const url = URL.createObjectURL(item.file);
         const el = document.createElement("div");
         el.style.cssText = "position:relative";
-        el.innerHTML = `<img src="${url}" style="width:100%;height:75px;object-fit:cover;border-radius:5px;border:1px solid #d7dbe0" />
-          <button title="삭제" style="position:absolute;top:2px;right:2px;background:rgba(0,0,0,.6);color:#fff;border:0;border-radius:50%;width:20px;height:20px;cursor:pointer;font-size:.7rem;padding:0">×</button>`;
+        el.innerHTML = `<div style="position:relative">
+            <img src="${url}" style="width:100%;height:75px;object-fit:cover;border-radius:5px;border:1px solid #d7dbe0" />
+            <span style="position:absolute;top:2px;left:2px;background:#2f6fed;color:#fff;font-size:.68rem;font-weight:700;padding:1px 6px;border-radius:4px">사진${idx + 1}</span>
+            <button title="삭제" style="position:absolute;top:2px;right:2px;background:rgba(0,0,0,.6);color:#fff;border:0;border-radius:50%;width:20px;height:20px;cursor:pointer;font-size:.7rem;padding:0">×</button>
+          </div>
+          <input type="text" placeholder="사진 설명" value="${(item.caption || "").replace(/"/g, "&quot;")}"
+                 style="width:100%;margin-top:4px;font-size:.72rem;padding:4px;border:1px solid #d7dbe0;border-radius:5px" />`;
+        el.querySelector("input").addEventListener("input", (e) => { item.caption = e.target.value; });
         el.querySelector("button").addEventListener("click", () => {
-          const i = photosByKey[key].indexOf(item);
-          if (i >= 0) photosByKey[key].splice(i, 1);
+          photosByKey[key].splice(idx, 1);
           renderThumbs(key);
         });
         box.appendChild(el);
-      }
+      });
     }
     for (const inp of document.querySelectorAll("[data-photo]")) {
       inp.addEventListener("change", (e) => {
@@ -205,7 +210,7 @@
           for (const item of items) {
             setStatus(`사진 압축 중… (${++done}/${totalPhotos})`);
             const c = await compressImage(item.file);
-            compressed[key].push({ idref: "photo" + item.id, bytes: c.bytes, w: c.w, h: c.h });
+            compressed[key].push({ idref: "photo" + item.id, bytes: c.bytes, w: c.w, h: c.h, caption: item.caption });
           }
         }
         setStatus("한글파일 생성 중…");

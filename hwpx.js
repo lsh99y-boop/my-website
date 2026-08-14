@@ -18,37 +18,52 @@ function esc(s) {
 function fillLine(s, token, v) {
   return s.split(token).join(esc(v));
 }
-// 내용 칸: 줄마다 별도 문단(<hp:p>) 복제. 첫 줄만 ◎ 유지.
-function fillContent(s, token, value) {
+// 사진 마커: [사진1], [사진 1,2], [그림3] 등
+const PHOTO_MARKER = /\[(?:사진|그림)\s*([\d,\s]+)\]/g;
+
+// 한 시설 내용칸을 채움: 텍스트(줄별 문단) + 마커 위치에 사진 박스 + 마커 없는 사진은 맨 아래.
+// photos: [{idref, w, h}]
+function fillFacility(s, key, text, photos) {
+  const token = `{{${key}}}`;
   const ti = s.indexOf(token);
   if (ti < 0) return s;
   const pstart = s.lastIndexOf("<hp:p ", ti);
   const pend = s.indexOf("</hp:p>", ti) + "</hp:p>".length;
-  const para = s.slice(pstart, pend);
-  const lines = value && value.trim() ? value.replace(/\r\n/g, "\n").split("\n") : [""];
-  const out = [para.split(token).join(esc(lines[0]))];
-  for (let i = 1; i < lines.length; i++) {
-    let clone = para.split(token).join(esc(lines[i]));
-    clone = clone.replace(BULLET + " ", "");
-    clone = clone.replace(/<hp:linesegarray>[\s\S]*?<\/hp:linesegarray>/, "");
-    out.push(clone);
-  }
-  return s.slice(0, pstart) + out.join("") + s.slice(pend);
-}
+  const paraTpl = s.slice(pstart, pend); // ◎ 토큰 문단 템플릿
 
-// 특정 셀(colAddr,rowAddr)의 subList 끝(</hp:subList>)에 사진 문단 삽입 (텍스트 아래)
-function injectCellPhotos(sec, col, row, photosXml) {
-  if (!photosXml) return sec;
-  const parts = sec.split("<hp:tc");
-  for (let i = 1; i < parts.length; i++) {
-    const m = parts[i].match(/<hp:cellAddr colAddr="(\d+)" rowAddr="(\d+)"\/>/);
-    if (m && +m[1] === col && +m[2] === row) {
-      const idx = parts[i].indexOf("</hp:subList>");
-      if (idx >= 0) parts[i] = parts[i].slice(0, idx) + photosXml + parts[i].slice(idx);
-      break;
+  const textPara = (str, keepBullet) => {
+    let p = paraTpl.split(token).join(esc(str));
+    if (!keepBullet) p = p.replace(BULLET + " ", "");
+    p = p.replace(/<hp:linesegarray>[\s\S]*?<\/hp:linesegarray>/, "");
+    return p;
+  };
+  const boxOf = (idxs) =>
+    buildCellPhotos(idxs.map((i) => ({ idref: photos[i].idref, pw: photos[i].w, ph: photos[i].h, caption: photos[i].caption })));
+
+  const used = new Set();
+  const out = [];
+  let firstLine = true;
+  const lines = (text || "").replace(/\r\n/g, "\n").split("\n");
+  for (const line of lines) {
+    const markers = [...line.matchAll(PHOTO_MARKER)];
+    const textOnly = line.replace(PHOTO_MARKER, "").trim();
+    if (textOnly) { out.push(textPara(textOnly, firstLine)); firstLine = false; }
+    if (markers.length) {
+      const nums = [];
+      for (const m of markers)
+        for (const n of m[1].split(",")) {
+          const idx = parseInt(n.trim(), 10) - 1;
+          if (idx >= 0 && photos && idx < photos.length) { nums.push(idx); used.add(idx); }
+        }
+      if (nums.length) out.push(boxOf(nums));
     }
   }
-  return parts.join("<hp:tc");
+  if (!out.length) out.push(textPara("", true)); // 완전 빈 칸: ◎만
+  // 마커 안 쓴 사진은 맨 아래
+  const rest = (photos || []).map((_, i) => i).filter((i) => !used.has(i));
+  if (rest.length) out.push(boxOf(rest));
+
+  return s.slice(0, pstart) + out.join("") + s.slice(pend);
 }
 
 // data: {MM,DD,WD,WX, C_song,...,C_teuki}  (텍스트)
@@ -64,19 +79,15 @@ export async function buildHwpx(data, photosByKey = {}) {
 
   // 날짜/요일/날씨
   for (const k of ["MM", "DD", "WD", "WX"]) sec = fillLine(sec, `{{${k}}}`, data[k]);
-  // 8개 내용 칸 텍스트
-  for (const k of Object.keys(KEY_ROW)) sec = fillContent(sec, `{{${k}}}`, data[k]);
-  sec = sec.replace(/\{\{[^}]+\}\}/g, "");
-
-  // 시설별 사진: 해당 내용칸 텍스트 아래에 삽입
+  // 8개 내용 칸: 텍스트 + 마커 위치 사진 + 나머지 사진(맨 아래)
   const allPhotos = [];
   for (const key of Object.keys(KEY_ROW)) {
     const photos = photosByKey[key] || [];
-    if (!photos.length) continue;
-    const xml = buildCellPhotos(photos.map((p) => ({ idref: p.idref, pw: p.w, ph: p.h })));
-    sec = injectCellPhotos(sec, 2, KEY_ROW[key], xml);
+    sec = fillFacility(sec, key, data[key], photos);
     allPhotos.push(...photos);
   }
+  sec = sec.replace(/\{\{[^}]+\}\}/g, "");
+
   if (allPhotos.length) {
     const items = allPhotos
       .map((p) => `<opf:item id="${p.idref}" href="BinData/${p.idref}.jpg" media-type="image/jpeg" isEmbeded="1"/>`)

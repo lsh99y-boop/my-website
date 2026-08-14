@@ -1,10 +1,15 @@
 // 사진 처리: 브라우저 압축(KB) + 시설 내용칸 안에 테두리 박스 사진표 생성
 import { PHOTO_TPL } from "./photo-templates.js";
 
-const PER_ROW = 4;       // 한 줄에 사진 4장
-const CELL_W = 12200;    // 박스 셀 폭(HWPUNIT, ≈43mm) — 내용칸 폭에 4장 꽉 채움
-const PIC_MAXW = 11700;  // 셀 안 사진 최대 폭
-const PIC_MAXH = 10320;  // 사진 최대 높이 (세로로 긴 사진일수록 크게)
+const PER_ROW = 4;         // 한 줄에 최대 4장
+const CONTENT_W = 48800;   // 내용칸 안 사용 가능 폭(HWPUNIT)
+const MAX_CELL_W = 18000;  // 셀 최대 폭 — 사진 적을 때 너무 커지지 않게(≈63mm)
+const PIC_MAXH = 14000;    // 사진 최대 높이(≈49mm) — 세로 사진도 크게
+const CAP_H = 1300;        // 캡션(설명) 칸 높이
+
+function esc(s) {
+  return (s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
 
 // 파일 → 압축 JPEG (가로 maxW로 리사이즈, 품질 quality). KB 단위로 축소.
 export function compressImage(file, maxW = 1024, quality = 0.7) {
@@ -32,8 +37,8 @@ function geom(pw, ph, maxW, maxH) {
   return { dispW: Math.round(dispW), dispH: Math.round(dispW * ph / pw) };
 }
 
-function picXml(idref, pw, ph) {
-  const { dispW, dispH } = geom(pw, ph, PIC_MAXW, PIC_MAXH);
+function picXml(idref, pw, ph, maxW) {
+  const { dispW, dispH } = geom(pw, ph, maxW, PIC_MAXH);
   const dimW = pw * 75, dimH = ph * 75;
   return {
     dispH,
@@ -41,43 +46,57 @@ function picXml(idref, pw, ph) {
   };
 }
 
-// 테두리 박스 셀 1개. 사진 없는(padding) 칸은 테두리 없이(borderFill=1).
-function boxCell(col, row, picXmlStr, cellH) {
+// 사진 박스 셀. 사진 없는(padding) 칸은 테두리 없이(borderFill=1).
+function boxCell(col, row, picXmlStr, cellW, cellH) {
   let c = PHOTO_TPL.PHOTO_CELL;
   c = c.split("{{COL}}").join(col).split("{{ROW}}").join(row).split("{{PIC}}").join(picXmlStr);
-  c = c.replace(/<hp:cellSz width="\d+" height="\d+"\/>/, `<hp:cellSz width="${CELL_W}" height="${cellH}"/>`);
-  if (!picXmlStr) c = c.replace('borderFillIDRef="23"', 'borderFillIDRef="1"'); // 빈 칸: 테두리 없음
+  c = c.replace(/<hp:cellSz width="\d+" height="\d+"\/>/, `<hp:cellSz width="${cellW}" height="${cellH}"/>`);
+  if (!picXmlStr) c = c.replace('borderFillIDRef="23"', 'borderFillIDRef="1"');
+  return c;
+}
+// 캡션(설명) 박스 셀. 사진 있는 칸만 테두리.
+function capCell(col, row, text, cellW, hasPhoto) {
+  let c = PHOTO_TPL.CAP_CELL;
+  c = c.split("{{COL}}").join(col).split("{{ROW}}").join(row).split("{{CAP}}").join(esc(text));
+  c = c.replace(/<hp:cellSz width="\d+" height="\d+"\/>/, `<hp:cellSz width="${cellW}" height="${CAP_H}"/>`);
+  if (!hasPhoto) c = c.replace('borderFillIDRef="23"', 'borderFillIDRef="1"');
   return c;
 }
 
-// photos: [{idref, pw, ph}] → 시설 내용칸에 넣을 "테두리 박스 사진표"를 담은 문단
+// photos: [{idref, pw, ph, caption}] → 사진 박스 + 그 아래 설명 박스 표를 담은 문단
 export function buildCellPhotos(photos) {
   if (!photos || !photos.length) return "";
   const N = photos.length;
   const cols = Math.min(N, PER_ROW);
-  const rowN = Math.ceil(N / cols);
+  const groups = Math.ceil(N / cols);
+  const cellW = Math.min(Math.floor(CONTENT_W / cols), MAX_CELL_W); // 적을수록 넓게
+  const picMaxW = cellW - 400;
   let rowsXml = "", totalH = 0;
-  for (let r = 0; r < rowN; r++) {
+  for (let g = 0; g < groups; g++) {
+    const picRow = 2 * g, capRow = 2 * g + 1;
     let rowMaxH = 0;
-    const picStrs = [];
+    const picStrs = [], caps = [], has = [];
     for (let c = 0; c < cols; c++) {
-      const idx = r * cols + c;
+      const idx = g * cols + c;
       if (idx < N) {
-        const g = picXml(photos[idx].idref, photos[idx].pw, photos[idx].ph);
-        if (g.dispH > rowMaxH) rowMaxH = g.dispH;
-        picStrs.push(g.xml);
-      } else picStrs.push("");
+        const pg = picXml(photos[idx].idref, photos[idx].pw, photos[idx].ph, picMaxW);
+        if (pg.dispH > rowMaxH) rowMaxH = pg.dispH;
+        picStrs.push(pg.xml); caps.push(photos[idx].caption || ""); has.push(true);
+      } else { picStrs.push(""); caps.push(""); has.push(false); }
     }
     const cellH = rowMaxH + 300;
-    totalH += cellH;
-    let cells = "";
-    for (let c = 0; c < cols; c++) cells += boxCell(c, r, picStrs[c], cellH);
-    rowsXml += "<hp:tr>" + cells + "</hp:tr>";
+    totalH += cellH + CAP_H;
+    let pr = "", cr = "";
+    for (let c = 0; c < cols; c++) {
+      pr += boxCell(c, picRow, picStrs[c], cellW, cellH);
+      cr += capCell(c, capRow, caps[c], cellW, has[c]);
+    }
+    rowsXml += "<hp:tr>" + pr + "</hp:tr><hp:tr>" + cr + "</hp:tr>";
   }
   let head = PHOTO_TPL.TBL_HEAD;
-  head = head.split("{{ROWCNT}}").join(rowN).split("{{HEIGHT}}").join(totalH);
+  head = head.split("{{ROWCNT}}").join(2 * groups).split("{{HEIGHT}}").join(totalH);
   head = head.replace(/colCnt="\d+"/, `colCnt="${cols}"`)
-             .replace(/(<hp:sz width=")\d+/, `$1${cols * CELL_W}`);
+             .replace(/(<hp:sz width=")\d+/, `$1${cols * cellW}`);
   const tbl = head + rowsXml + "</hp:tbl>";
   return `<hp:p id="0" paraPrIDRef="22" styleIDRef="0" pageBreak="0" columnBreak="0" merged="0"><hp:run charPrIDRef="0">${tbl}</hp:run><hp:linesegarray><hp:lineseg textpos="0" vertpos="0" vertsize="${totalH}" textheight="${totalH}" baseline="${Math.round(totalH * 0.85)}" spacing="600" horzpos="300" horzsize="48464" flags="393216"/></hp:linesegarray></hp:p>`;
 }
