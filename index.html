@@ -209,17 +209,15 @@
     for (const ta of document.querySelectorAll("textarea[data-key]"))
       ta.addEventListener("input", scheduleAutoSave);
 
-    // 날짜 변경: 확인 메시지 후 이동
+    // 날짜 변경: 막지 않고 이동(현재 내용은 저장) + 안내 메시지
     dateEl.addEventListener("change", async () => {
       const newDate = dateEl.value;
       if (newDate === prevDate) return;
-      const ok = confirm(
-        `${newDate} 의 내용으로 화면이 바뀝니다.\n(지금 작성한 ${prevDate} 내용은 저장돼요)\n계속할까요?`
-      );
-      if (!ok) { dateEl.value = prevDate; return; }
+      const old = prevDate;
       clearTimeout(saveTimer);
-      if (dirty) { try { await saveDate(prevDate); } catch (e) {} } // 이동 전 현재 날짜 저장
+      if (dirty) { try { await saveDate(old); } catch (e) {} } // 이동 전 현재 날짜 저장
       await loadForDate();
+      setStatus(`📅 ${newDate} 로 이동 — ${old} 내용은 저장됨`, "ok");
     });
     dateEl.value = new Date().toISOString().slice(0, 10);
     prevDate = dateEl.value;
