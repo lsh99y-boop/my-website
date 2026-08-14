@@ -55,16 +55,8 @@
       </div>
     </div>
 
-    <div class="card" id="facilities">
-      <!-- 업무구분 8칸 -->
-    </div>
-
-    <div class="card">
-      <label>📷 사진 <span style="color:#8a94a3;font-weight:400;font-size:.8rem">(선택 · 여러 장 · 업로드 시 자동으로 KB 단위 압축 · 4열 격자로 삽입)</span></label>
-      <div style="margin-top:8px">
-        <input type="file" id="photoInput" accept="image/*" multiple />
-      </div>
-      <div id="photoList" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin-top:14px"></div>
+    <div id="facilities">
+      <!-- 시설별 카드(내용 + 사진) -->
     </div>
   </main>
 
@@ -89,14 +81,52 @@
     ];
     const WD = ["일","월","화","수","목","금","토"];
 
-    // 시설 입력칸 생성
+    // 시설별 사진 저장 {key: [{id, file}]}
+    const photosByKey = {};
+    let photoSeq = 0;
+
+    // 시설 카드 생성 (내용 textarea + 사진 업로드)
     const fc = document.getElementById("facilities");
     for (const [key, label] of FACILITIES) {
+      photosByKey[key] = [];
       const div = document.createElement("div");
-      div.className = "facility";
-      div.innerHTML = `<label>${label} <span class="hint">(여러 줄 입력 가능 · 빈칸은 ◎만 표시)</span></label>
-        <textarea data-key="${key}" placeholder="업무 추진 내용..."></textarea>`;
+      div.className = "card";
+      div.innerHTML = `
+        <label>${label} <span class="hint" style="color:#8a94a3;font-weight:400;font-size:.78rem">(여러 줄 가능 · 빈칸은 ◎만 표시)</span></label>
+        <textarea data-key="${key}" placeholder="업무 추진 내용..." style="margin-top:6px"></textarea>
+        <div style="margin-top:10px">
+          <span style="font-size:.8rem;color:#556;font-weight:600">📷 사진</span>
+          <span class="hint" style="color:#8a94a3;font-size:.75rem">(선택 · 여러 장 · 자동 KB압축 · 내용 아래 삽입)</span>
+          <input type="file" accept="image/*" multiple data-photo="${key}" style="display:block;margin-top:6px" />
+          <div class="thumbs" data-thumbs="${key}" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;margin-top:8px"></div>
+        </div>`;
       fc.appendChild(div);
+    }
+
+    function renderThumbs(key) {
+      const box = document.querySelector(`[data-thumbs="${key}"]`);
+      box.innerHTML = "";
+      for (const item of photosByKey[key]) {
+        const url = URL.createObjectURL(item.file);
+        const el = document.createElement("div");
+        el.style.cssText = "position:relative";
+        el.innerHTML = `<img src="${url}" style="width:100%;height:75px;object-fit:cover;border-radius:5px;border:1px solid #d7dbe0" />
+          <button title="삭제" style="position:absolute;top:2px;right:2px;background:rgba(0,0,0,.6);color:#fff;border:0;border-radius:50%;width:20px;height:20px;cursor:pointer;font-size:.7rem;padding:0">×</button>`;
+        el.querySelector("button").addEventListener("click", () => {
+          const i = photosByKey[key].indexOf(item);
+          if (i >= 0) photosByKey[key].splice(i, 1);
+          renderThumbs(key);
+        });
+        box.appendChild(el);
+      }
+    }
+    for (const inp of document.querySelectorAll("[data-photo]")) {
+      inp.addEventListener("change", (e) => {
+        const key = e.target.dataset.photo;
+        for (const f of e.target.files) photosByKey[key].push({ id: ++photoSeq, file: f });
+        e.target.value = "";
+        renderThumbs(key);
+      });
     }
 
     // 날짜 → 요일 자동
@@ -111,38 +141,6 @@
     // 기본값: 오늘
     dateEl.value = new Date().toISOString().slice(0, 10);
     syncWeekday();
-
-    // ---- 사진 관리 ----
-    let photoSeq = 0;
-    const photoItems = []; // {id, file, caption}
-    const photoList = document.getElementById("photoList");
-    const photoInput = document.getElementById("photoInput");
-
-    function renderPhotos() {
-      photoList.innerHTML = "";
-      for (const item of photoItems) {
-        const box = document.createElement("div");
-        box.style.cssText = "border:1px solid #d7dbe0;border-radius:8px;padding:8px;background:#fafbfc";
-        const url = URL.createObjectURL(item.file);
-        box.innerHTML = `
-          <img src="${url}" style="width:100%;height:100px;object-fit:cover;border-radius:5px" />
-          <input type="text" placeholder="사진 설명(캡션)" value="${item.caption.replace(/"/g,'&quot;')}"
-                 style="width:100%;margin-top:6px;font-size:.8rem;padding:5px;border:1px solid #d7dbe0;border-radius:5px" />
-          <button style="margin-top:6px;width:100%;background:#eee;color:#b3261e;font-size:.78rem;padding:5px">삭제</button>`;
-        box.querySelector("input").addEventListener("input", (e) => { item.caption = e.target.value; });
-        box.querySelector("button").addEventListener("click", () => {
-          const i = photoItems.indexOf(item);
-          if (i >= 0) photoItems.splice(i, 1);
-          renderPhotos();
-        });
-        photoList.appendChild(box);
-      }
-    }
-    photoInput.addEventListener("change", (e) => {
-      for (const f of e.target.files) photoItems.push({ id: ++photoSeq, file: f, caption: "" });
-      photoInput.value = "";
-      renderPhotos();
-    });
 
     const status = document.getElementById("status");
     function setStatus(msg, cls) { status.textContent = msg; status.className = cls || ""; }
@@ -159,19 +157,27 @@
 
       btn.disabled = true;
       try {
-        // 사진 압축
-        const photos = [];
-        for (let i = 0; i < photoItems.length; i++) {
-          setStatus(`사진 압축 중… (${i + 1}/${photoItems.length})`);
-          const c = await compressImage(photoItems[i].file);
-          photos.push({ idref: "photo" + photoItems[i].id, bytes: c.bytes, w: c.w, h: c.h, caption: photoItems[i].caption });
+        // 시설별 사진 압축
+        const compressed = {};
+        let done = 0, totalPhotos = 0;
+        for (const k in photosByKey) totalPhotos += photosByKey[k].length;
+        for (const [key] of FACILITIES) {
+          const items = photosByKey[key] || [];
+          if (!items.length) continue;
+          compressed[key] = [];
+          for (const item of items) {
+            setStatus(`사진 압축 중… (${++done}/${totalPhotos})`);
+            const c = await compressImage(item.file);
+            compressed[key].push({ idref: "photo" + item.id, bytes: c.bytes, w: c.w, h: c.h });
+          }
         }
         setStatus("한글파일 생성 중…");
-        const blob = await buildHwpx(data, photos);
+        const blob = await buildHwpx(data, compressed);
         const fname = `일일업무일지_${Y}년${M}월${D}일.hwpx`;
         downloadBlob(blob, fname);
-        const kb = photos.reduce((s, p) => s + p.bytes.length, 0) / 1024;
-        setStatus(`✅ 다운로드 완료: ${fname}` + (photos.length ? ` (사진 ${photos.length}장, ${kb.toFixed(0)}KB)` : ""), "ok");
+        let totKB = 0;
+        for (const k in compressed) for (const p of compressed[k]) totKB += p.bytes.length;
+        setStatus(`✅ 다운로드 완료: ${fname}` + (totalPhotos ? ` (사진 ${totalPhotos}장, ${(totKB / 1024).toFixed(0)}KB)` : ""), "ok");
       } catch (err) {
         console.error(err);
         setStatus("❌ 오류: " + err.message, "err");
