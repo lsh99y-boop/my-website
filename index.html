@@ -58,6 +58,14 @@
     <div class="card" id="facilities">
       <!-- 업무구분 8칸 -->
     </div>
+
+    <div class="card">
+      <label>📷 사진 <span style="color:#8a94a3;font-weight:400;font-size:.8rem">(선택 · 여러 장 · 업로드 시 자동으로 KB 단위 압축 · 4열 격자로 삽입)</span></label>
+      <div style="margin-top:8px">
+        <input type="file" id="photoInput" accept="image/*" multiple />
+      </div>
+      <div id="photoList" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin-top:14px"></div>
+    </div>
   </main>
 
   <div class="bar">
@@ -67,6 +75,7 @@
 
   <script type="module">
     import { buildHwpx, downloadBlob } from "./hwpx.js";
+    import { compressImage } from "./photo.js";
 
     const FACILITIES = [
       ["C_song",   "송출기술"],
@@ -103,6 +112,38 @@
     dateEl.value = new Date().toISOString().slice(0, 10);
     syncWeekday();
 
+    // ---- 사진 관리 ----
+    let photoSeq = 0;
+    const photoItems = []; // {id, file, caption}
+    const photoList = document.getElementById("photoList");
+    const photoInput = document.getElementById("photoInput");
+
+    function renderPhotos() {
+      photoList.innerHTML = "";
+      for (const item of photoItems) {
+        const box = document.createElement("div");
+        box.style.cssText = "border:1px solid #d7dbe0;border-radius:8px;padding:8px;background:#fafbfc";
+        const url = URL.createObjectURL(item.file);
+        box.innerHTML = `
+          <img src="${url}" style="width:100%;height:100px;object-fit:cover;border-radius:5px" />
+          <input type="text" placeholder="사진 설명(캡션)" value="${item.caption.replace(/"/g,'&quot;')}"
+                 style="width:100%;margin-top:6px;font-size:.8rem;padding:5px;border:1px solid #d7dbe0;border-radius:5px" />
+          <button style="margin-top:6px;width:100%;background:#eee;color:#b3261e;font-size:.78rem;padding:5px">삭제</button>`;
+        box.querySelector("input").addEventListener("input", (e) => { item.caption = e.target.value; });
+        box.querySelector("button").addEventListener("click", () => {
+          const i = photoItems.indexOf(item);
+          if (i >= 0) photoItems.splice(i, 1);
+          renderPhotos();
+        });
+        photoList.appendChild(box);
+      }
+    }
+    photoInput.addEventListener("change", (e) => {
+      for (const f of e.target.files) photoItems.push({ id: ++photoSeq, file: f, caption: "" });
+      photoInput.value = "";
+      renderPhotos();
+    });
+
     const status = document.getElementById("status");
     function setStatus(msg, cls) { status.textContent = msg; status.className = cls || ""; }
 
@@ -117,12 +158,20 @@
         data[ta.dataset.key] = ta.value;
 
       btn.disabled = true;
-      setStatus("생성 중…");
       try {
-        const blob = await buildHwpx(data);
+        // 사진 압축
+        const photos = [];
+        for (let i = 0; i < photoItems.length; i++) {
+          setStatus(`사진 압축 중… (${i + 1}/${photoItems.length})`);
+          const c = await compressImage(photoItems[i].file);
+          photos.push({ idref: "photo" + photoItems[i].id, bytes: c.bytes, w: c.w, h: c.h, caption: photoItems[i].caption });
+        }
+        setStatus("한글파일 생성 중…");
+        const blob = await buildHwpx(data, photos);
         const fname = `일일업무일지_${Y}년${M}월${D}일.hwpx`;
         downloadBlob(blob, fname);
-        setStatus("✅ 다운로드 완료: " + fname, "ok");
+        const kb = photos.reduce((s, p) => s + p.bytes.length, 0) / 1024;
+        setStatus(`✅ 다운로드 완료: ${fname}` + (photos.length ? ` (사진 ${photos.length}장, ${kb.toFixed(0)}KB)` : ""), "ok");
       } catch (err) {
         console.error(err);
         setStatus("❌ 오류: " + err.message, "err");
