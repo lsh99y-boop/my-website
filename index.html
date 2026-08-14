@@ -148,36 +148,91 @@
       wdEl.value = WD[new Date(dateEl.value + "T00:00:00").getDay()];
     }
 
+    // 현재 폼 내용 수집 / 저장
+    function gatherContents() {
+      const contents = {};
+      for (const ta of document.querySelectorAll("textarea[data-key]"))
+        contents[ta.dataset.key] = ta.value;
+      return contents;
+    }
+    async function saveDate(d) {
+      await saveLog({
+        log_date: d, weekday: WD[new Date(d + "T00:00:00").getDay()],
+        weather: weatherEl.value, contents: gatherContents(),
+      });
+    }
+
+    let suppressSave = false;    // 불러오기 중 자동저장 방지
+    let prevDate = dateEl.value; // 직전 날짜
+    let dirty = false;           // 저장 안 된 변경
+
     // 저장된 내용 불러와 폼 채우기
     async function loadForDate() {
       syncWeekday();
       if (!dateEl.value) return;
+      suppressSave = true;
       try {
         const log = await loadLog(dateEl.value);
-        // 내용 초기화 후 채움
         weatherEl.value = log?.weather || "";
         const c = (log && log.contents) || {};
         for (const ta of document.querySelectorAll("textarea[data-key]"))
           ta.value = c[ta.dataset.key] || "";
-        setStatus(log ? `📂 ${dateEl.value} 저장본 불러옴` : "", log ? "ok" : "");
+        setStatus(log ? `📂 ${dateEl.value} 저장본 불러옴` : `🆕 ${dateEl.value} 새 일지`, "ok");
+        prevDate = dateEl.value;
+        dirty = false;
       } catch (err) {
         setStatus("불러오기 오류: " + err.message + " (테이블 생성됐나요?)", "err");
+      } finally {
+        suppressSave = false;
       }
     }
-    dateEl.addEventListener("change", loadForDate);
+
+    // 자동 저장 (편집 멈추고 1.5초 뒤)
+    let saveTimer = null;
+    function scheduleAutoSave() {
+      if (suppressSave) return;
+      dirty = true;
+      setStatus("✎ 편집 중…");
+      clearTimeout(saveTimer);
+      saveTimer = setTimeout(async () => {
+        try {
+          await saveDate(dateEl.value);
+          dirty = false;
+          const t = new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" });
+          setStatus(`💾 자동 저장됨 (${t})`, "ok");
+        } catch (err) {
+          setStatus("자동저장 실패: " + err.message + " (테이블 생성 필요?)", "err");
+        }
+      }, 1500);
+    }
+    weatherEl.addEventListener("input", scheduleAutoSave);
+    for (const ta of document.querySelectorAll("textarea[data-key]"))
+      ta.addEventListener("input", scheduleAutoSave);
+
+    // 날짜 변경: 확인 메시지 후 이동
+    dateEl.addEventListener("change", async () => {
+      const newDate = dateEl.value;
+      if (newDate === prevDate) return;
+      const ok = confirm(
+        `${newDate} 의 내용으로 화면이 바뀝니다.\n(지금 작성한 ${prevDate} 내용은 저장돼요)\n계속할까요?`
+      );
+      if (!ok) { dateEl.value = prevDate; return; }
+      clearTimeout(saveTimer);
+      if (dirty) { try { await saveDate(prevDate); } catch (e) {} } // 이동 전 현재 날짜 저장
+      await loadForDate();
+    });
     dateEl.value = new Date().toISOString().slice(0, 10);
+    prevDate = dateEl.value;
     loadForDate();
 
-    // 저장 버튼
+    // 수동 저장 버튼 (즉시)
     document.getElementById("save").addEventListener("click", async (e) => {
       if (!dateEl.value) { setStatus("날짜를 선택하세요.", "err"); return; }
       e.currentTarget.disabled = true;
       setStatus("저장 중…");
       try {
-        const contents = {};
-        for (const ta of document.querySelectorAll("textarea[data-key]"))
-          contents[ta.dataset.key] = ta.value;
-        await saveLog({ log_date: dateEl.value, weekday: wdEl.value, weather: weatherEl.value, contents });
+        await saveDate(dateEl.value);
+        dirty = false;
         setStatus(`✅ 저장 완료 (${dateEl.value})`, "ok");
       } catch (err) {
         console.error(err);
