@@ -25,6 +25,11 @@ create policy "work_logs 저장: 모두"
 create policy "work_logs 수정: 모두"
   on public.work_logs for update using (true) with check (true);
 
+-- 삭제: 6개월 지난 일지만 삭제 가능 (자동 정리용, 최근 것은 실수로도 못 지움)
+create policy "work_logs 자동정리: 6개월 지난 것만"
+  on public.work_logs for delete
+  using (log_date < (current_date - interval '6 months'));
+
 -- ------------------------------------------------------------
 -- 참고: 로그인이 없어서 공개키를 아는 사람은 누구나 읽고 쓸 수 있습니다.
 --       내부용(URL 비공개)으로는 충분하지만, 나중에 로그인(Auth)을 붙이면

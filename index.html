@@ -69,7 +69,7 @@
   <script type="module">
     import { buildHwpx, downloadBlob } from "./hwpx.js";
     import { compressImage } from "./photo.js";
-    import { saveLog, loadLog } from "./storage.js";
+    import { saveLog, loadLog, cleanupOld } from "./storage.js";
 
     const FACILITIES = [
       ["C_song",   "송출기술"],
@@ -222,6 +222,7 @@
     dateEl.value = new Date().toISOString().slice(0, 10);
     prevDate = dateEl.value;
     loadForDate();
+    cleanupOld(6).catch(() => {}); // 6개월 지난 일지 자동 정리(조용히)
 
     // 수동 저장 버튼 (즉시)
     document.getElementById("save").addEventListener("click", async (e) => {

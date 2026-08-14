@@ -33,3 +33,12 @@ export async function listDates(limit = 60) {
   if (error) throw error;
   return data || [];
 }
+
+// N개월 지난 일지 자동 삭제 (기본 6개월). RLS가 오래된 행만 삭제 허용.
+export async function cleanupOld(months = 6) {
+  const d = new Date();
+  d.setMonth(d.getMonth() - months);
+  const cutoff = d.toISOString().slice(0, 10);
+  const { error } = await supabase.from("work_logs").delete().lt("log_date", cutoff);
+  if (error) throw error;
+}
