@@ -32,6 +32,15 @@
   </style>
 </head>
 <body>
+  <div id="pinGate" style="position:fixed;inset:0;background:#0e1420;z-index:9999;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px;color:#e6ebf2;font-family:system-ui,'Malgun Gothic',sans-serif;padding:20px;text-align:center">
+    <div style="font-size:1.3rem;font-weight:700">📋 일일업무일지</div>
+    <div style="color:#8a94a3;font-size:.9rem">접속 PIN을 입력하세요</div>
+    <input id="pinInput" type="password" inputmode="numeric" maxlength="12" placeholder="PIN"
+           style="font-size:1.4rem;text-align:center;letter-spacing:.25em;padding:10px 16px;border-radius:8px;border:1px solid #2a3550;background:#182130;color:#fff;width:200px" />
+    <button id="pinOk" style="background:#2f6fed;color:#fff;border:0;border-radius:8px;padding:11px 28px;font-weight:600;cursor:pointer;font-size:1rem">확인</button>
+    <div id="pinErr" style="color:#ff6b6b;font-size:.85rem;height:1.1em"></div>
+  </div>
+
   <header>
     <h1>📋 일일업무일지 작성</h1>
     <p>대전총국 송출센터 · 입력 후 한글파일(.hwpx)로 다운로드</p>
@@ -80,6 +89,22 @@
     import { compressImage } from "./photo.js";
     import { saveLog, loadLog, cleanupOld, listMonth } from "./storage.js";
     import { uploadPhoto, photoUrl, removePhoto, fetchPhotoBytes } from "./photoStorage.js";
+
+    // ===== 접속 PIN (팀 공용) =====
+    const APP_PIN = "7590"; // ← 팀 공용 PIN
+    (function pinGate() {
+      const gate = document.getElementById("pinGate");
+      if (localStorage.getItem("ilji_pin_ok") === APP_PIN) { gate.remove(); return; }
+      const inp = document.getElementById("pinInput");
+      const err = document.getElementById("pinErr");
+      const tryPin = () => {
+        if (inp.value === APP_PIN) { localStorage.setItem("ilji_pin_ok", APP_PIN); gate.remove(); }
+        else { err.textContent = "PIN이 틀렸어요"; inp.value = ""; inp.focus(); }
+      };
+      document.getElementById("pinOk").addEventListener("click", tryPin);
+      inp.addEventListener("keydown", (e) => { if (e.key === "Enter") tryPin(); });
+      inp.focus();
+    })();
 
     const FACILITIES = [
       ["C_song",   "송출기술"],
