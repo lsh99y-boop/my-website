@@ -1,12 +1,12 @@
 // 일일업무일지 클라우드 저장/불러오기 (Supabase work_logs 테이블)
 import { supabase } from "./supabaseClient.js";
 
-// 하루치 내용 저장 (같은 날짜면 덮어씀)
-export async function saveLog({ log_date, weekday, weather, contents }) {
+// 하루치 내용 저장 (같은 날짜면 덮어씀). photos: {key:[{path,caption,w,h}]}
+export async function saveLog({ log_date, weekday, weather, contents, photos }) {
   const { error } = await supabase
     .from("work_logs")
     .upsert(
-      { log_date, weekday, weather, contents, updated_at: new Date().toISOString() },
+      { log_date, weekday, weather, contents, photos: photos || {}, updated_at: new Date().toISOString() },
       { onConflict: "log_date" }
     );
   if (error) throw error;

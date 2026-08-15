@@ -2,6 +2,7 @@
 // 토큰 템플릿(assets/template_ilji.hwpx)을 불러와 입력값·사진으로 채운 뒤 .hwpx 다운로드.
 import JSZip from "https://esm.sh/jszip@3.10.1";
 import { buildCellPhotos } from "./photo.js";
+import { fetchPhotoBytes } from "./photoStorage.js";
 
 const TEMPLATE_URL = "assets/template_ilji.hwpx";
 const BULLET = "◎";
@@ -115,9 +116,9 @@ export async function buildHwpx(data, photosByKey = {}) {
   return await out.generateAsync({ type: "blob" });
 }
 
-// 하루 템플릿(문단들)에 한 날짜 데이터 채우기 (텍스트만, 사진 없음)
+// 하루 템플릿(문단들)에 한 날짜 데이터 채우기. dayPhotos: {key:[{idref,w,h,caption}]}
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
-function fillDay(tmpl, day) {
+function fillDay(tmpl, day, dayPhotos = {}) {
   const [, M, D] = day.log_date.split("-");
   const wd = day.weekday || WEEKDAYS[new Date(day.log_date + "T00:00:00").getDay()];
   let s = tmpl;
@@ -126,11 +127,13 @@ function fillDay(tmpl, day) {
   s = fillLine(s, "{{WD}}", wd);
   s = fillLine(s, "{{WX}}", day.weather || "");
   const contents = day.contents || {};
-  for (const key of Object.keys(KEY_ROW)) s = fillFacility(s, key, contents[key] || "", []);
+  for (const key of Object.keys(KEY_ROW))
+    s = fillFacility(s, key, contents[key] || "", dayPhotos[key] || []);
   return s.replace(/\{\{[^}]+\}\}/g, "");
 }
 
-// 여러 날(days) → 하루 양식을 날짜순으로 이어붙인 한 파일 hwpx (텍스트만)
+// 여러 날(days) → 하루 양식을 날짜순으로 이어붙인 한 파일 hwpx.
+// day.photos: {key:[{path,w,h,caption}]} 이 있으면 Storage에서 가져와 임베드.
 export async function buildMonthHwpx(days) {
   const buf = await fetch(TEMPLATE_URL).then((r) => {
     if (!r.ok) throw new Error("템플릿 로드 실패: " + r.status);
@@ -141,18 +144,36 @@ export async function buildMonthHwpx(days) {
 
   const decl = (sec0.match(/^<\?xml[^>]*\?>/) || ['<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>'])[0];
   const rootOpen = sec0.match(/<hs:sec\b[^>]*>/)[0];
-  const bodyStart = sec0.indexOf(rootOpen) + rootOpen.length;
-  const bodyEnd = sec0.lastIndexOf("</hs:sec>");
-  const body = sec0.slice(bodyStart, bodyEnd);           // 하루 문단들(secPr 포함)
+  const body = sec0.slice(sec0.indexOf(rootOpen) + rootOpen.length, sec0.lastIndexOf("</hs:sec>"));
   const secPr = (body.match(/<hp:secPr\b[\s\S]*?<\/hp:secPr>/) || [""])[0];
-  const bodyNoSec = secPr ? body.replace(secPr, "") : body; // secPr 뺀 하루(2일차부터)
+  const bodyNoSec = secPr ? body.replace(secPr, "") : body;
 
-  let out = "";
-  days.forEach((day, i) => {
-    let tmpl = i === 0 ? body : bodyNoSec.replace('pageBreak="0"', 'pageBreak="1"'); // 2일차부터 새 페이지
-    out += fillDay(tmpl, day);
-  });
+  const bin = [];              // {arc, bytes}
+  const manifestItems = [];
+  let seq = 0, out = "";
+  for (let i = 0; i < days.length; i++) {
+    const day = days[i];
+    // 이 날의 사진들: Storage에서 바이트 가져오고 고유 idref 부여
+    const dayPhotos = {};
+    const dp = day.photos || {};
+    for (const key in dp) {
+      dayPhotos[key] = [];
+      for (const p of dp[key]) {
+        const idref = "m" + (++seq);
+        try {
+          bin.push({ arc: `BinData/${idref}.jpg`, bytes: await fetchPhotoBytes(p.path) });
+          manifestItems.push(`<opf:item id="${idref}" href="BinData/${idref}.jpg" media-type="image/jpeg" isEmbeded="1"/>`);
+          dayPhotos[key].push({ idref, w: p.w, h: p.h, caption: p.caption });
+        } catch (e) { /* 사진 하나 실패해도 계속 */ }
+      }
+    }
+    const tmpl = i === 0 ? body : bodyNoSec.replace('pageBreak="0"', 'pageBreak="1"');
+    out += fillDay(tmpl, day, dayPhotos);
+  }
   const newSec = decl + rootOpen + out + "</hs:sec>";
+  let hpf = await zip.file("Contents/content.hpf").async("string");
+  if (manifestItems.length)
+    hpf = hpf.replace('<opf:item id="header"', manifestItems.join("") + '<opf:item id="header"');
 
   const files = [];
   zip.forEach((path, f) => { if (!f.dir) files.push(path); });
@@ -161,8 +182,10 @@ export async function buildMonthHwpx(days) {
   for (const path of files) {
     if (path === "mimetype") continue;
     if (path === "Contents/section0.xml") outZip.file(path, newSec, { compression: "DEFLATE" });
+    else if (path === "Contents/content.hpf") outZip.file(path, hpf, { compression: "DEFLATE" });
     else outZip.file(path, await zip.file(path).async("uint8array"), { compression: "DEFLATE" });
   }
+  for (const b of bin) outZip.file(b.arc, b.bytes, { compression: "STORE" });
   return await outZip.generateAsync({ type: "blob" });
 }
 

@@ -79,6 +79,7 @@
     import { buildHwpx, buildMonthHwpx, downloadBlob } from "./hwpx.js";
     import { compressImage } from "./photo.js";
     import { saveLog, loadLog, cleanupOld, listMonth } from "./storage.js";
+    import { uploadPhoto, photoUrl, removePhoto, fetchPhotoBytes } from "./photoStorage.js";
 
     const FACILITIES = [
       ["C_song",   "송출기술"],
@@ -118,30 +119,51 @@
       const box = document.querySelector(`[data-thumbs="${key}"]`);
       box.innerHTML = "";
       photosByKey[key].forEach((item, idx) => {
-        const url = URL.createObjectURL(item.file);
+        const src = item.url || (item.file ? URL.createObjectURL(item.file) : "");
         const el = document.createElement("div");
         el.style.cssText = "position:relative";
         el.innerHTML = `<div style="position:relative">
-            <img src="${url}" style="width:100%;height:75px;object-fit:cover;border-radius:5px;border:1px solid #d7dbe0" />
+            <img src="${src}" style="width:100%;height:75px;object-fit:cover;border-radius:5px;border:1px solid #d7dbe0${item.uploading ? ";opacity:.4" : ""}" />
             <span style="position:absolute;top:2px;left:2px;background:#2f6fed;color:#fff;font-size:.68rem;font-weight:700;padding:1px 6px;border-radius:4px">사진${idx + 1}</span>
+            ${item.uploading ? '<span style="position:absolute;bottom:2px;left:2px;background:rgba(0,0,0,.65);color:#fff;font-size:.62rem;padding:1px 5px;border-radius:4px">올리는중…</span>' : ""}
             <button title="삭제" style="position:absolute;top:2px;right:2px;background:rgba(0,0,0,.6);color:#fff;border:0;border-radius:50%;width:20px;height:20px;cursor:pointer;font-size:.7rem;padding:0">×</button>
           </div>
           <input type="text" placeholder="사진 설명" value="${(item.caption || "").replace(/"/g, "&quot;")}"
                  style="width:100%;margin-top:4px;font-size:.72rem;padding:4px;border:1px solid #d7dbe0;border-radius:5px" />`;
-        el.querySelector("input").addEventListener("input", (e) => { item.caption = e.target.value; });
-        el.querySelector("button").addEventListener("click", () => {
-          photosByKey[key].splice(idx, 1);
+        el.querySelector("input").addEventListener("input", (e) => { item.caption = e.target.value; scheduleAutoSave(); });
+        el.querySelector("button").addEventListener("click", async () => {
+          if (item.path) { try { await removePhoto(item.path); } catch (err) {} }
+          const i = photosByKey[key].indexOf(item);
+          if (i >= 0) photosByKey[key].splice(i, 1);
           renderThumbs(key);
+          scheduleAutoSave();
         });
         box.appendChild(el);
       });
     }
     for (const inp of document.querySelectorAll("[data-photo]")) {
-      inp.addEventListener("change", (e) => {
+      inp.addEventListener("change", async (e) => {
         const key = e.target.dataset.photo;
-        for (const f of e.target.files) photosByKey[key].push({ id: ++photoSeq, file: f });
+        const files = [...e.target.files];
         e.target.value = "";
-        renderThumbs(key);
+        for (const f of files) {
+          const item = { id: ++photoSeq, file: f, caption: "", uploading: true };
+          photosByKey[key].push(item);
+          renderThumbs(key);
+          try {
+            const c = await compressImage(f);
+            const path = `${dateEl.value}/${key}/${item.id}_${Date.now()}.jpg`;
+            await uploadPhoto(path, c.bytes);
+            item.path = path; item.w = c.w; item.h = c.h; item.url = photoUrl(path);
+            item.uploading = false; item.file = null;
+            renderThumbs(key);
+            scheduleAutoSave();
+          } catch (err) {
+            item.uploading = false;
+            setStatus("사진 업로드 실패: " + err.message + " (photos 버킷 만드셨나요?)", "err");
+            renderThumbs(key);
+          }
+        }
       });
     }
 
@@ -164,10 +186,19 @@
         contents[ta.dataset.key] = ta.value;
       return contents;
     }
+    // 업로드 완료된 사진만 메타데이터로 (path 있는 것)
+    function gatherPhotos() {
+      const photos = {};
+      for (const [key] of FACILITIES) {
+        const list = (photosByKey[key] || []).filter((p) => p.path);
+        if (list.length) photos[key] = list.map((p) => ({ path: p.path, caption: p.caption || "", w: p.w, h: p.h }));
+      }
+      return photos;
+    }
     async function saveDate(d) {
       await saveLog({
         log_date: d, weekday: WD[new Date(d + "T00:00:00").getDay()],
-        weather: weatherEl.value, contents: gatherContents(),
+        weather: weatherEl.value, contents: gatherContents(), photos: gatherPhotos(),
       });
     }
 
@@ -186,6 +217,14 @@
         const c = (log && log.contents) || {};
         for (const ta of document.querySelectorAll("textarea[data-key]"))
           ta.value = c[ta.dataset.key] || "";
+        // 사진 복원
+        const ph = (log && log.photos) || {};
+        for (const [key] of FACILITIES) {
+          photosByKey[key] = (ph[key] || []).map((p) => ({
+            id: ++photoSeq, caption: p.caption || "", path: p.path, w: p.w, h: p.h, url: photoUrl(p.path),
+          }));
+          renderThumbs(key);
+        }
         setStatus(log ? `📂 ${dateEl.value} 저장본 불러옴` : `🆕 ${dateEl.value} 새 일지`, "ok");
         prevDate = dateEl.value;
         dirty = false;
@@ -262,18 +301,18 @@
 
       btn.disabled = true;
       try {
-        // 시설별 사진 압축
+        // 시설별 사진: Storage에서 바이트 가져오기 (업로드 완료된 것만)
         const compressed = {};
         let done = 0, totalPhotos = 0;
-        for (const k in photosByKey) totalPhotos += photosByKey[k].length;
+        for (const k in photosByKey) totalPhotos += (photosByKey[k] || []).filter((p) => p.path).length;
         for (const [key] of FACILITIES) {
-          const items = photosByKey[key] || [];
+          const items = (photosByKey[key] || []).filter((p) => p.path);
           if (!items.length) continue;
           compressed[key] = [];
           for (const item of items) {
-            setStatus(`사진 압축 중… (${++done}/${totalPhotos})`);
-            const c = await compressImage(item.file);
-            compressed[key].push({ idref: "photo" + item.id, bytes: c.bytes, w: c.w, h: c.h, caption: item.caption });
+            setStatus(`사진 불러오는 중… (${++done}/${totalPhotos})`);
+            const bytes = await fetchPhotoBytes(item.path);
+            compressed[key].push({ idref: "photo" + item.id, bytes, w: item.w, h: item.h, caption: item.caption });
           }
         }
         setStatus("한글파일 생성 중…");
