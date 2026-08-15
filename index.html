@@ -124,6 +124,8 @@
     // 시설별 사진 저장 {key: [{id, file}]}
     const photosByKey = {};
     let photoSeq = 0;
+    const touched = new Set();   // 이번에 내가 편집한 시설(이것만 저장 시 덮어씀)
+    let weatherTouched = false;  // 날씨를 내가 바꿨나
 
     // 시설 카드 생성 (내용 textarea + 사진 업로드)
     const fc = document.getElementById("facilities");
@@ -158,11 +160,12 @@
           </div>
           <input type="text" placeholder="사진 설명" value="${(item.caption || "").replace(/"/g, "&quot;")}"
                  style="width:100%;margin-top:4px;font-size:.72rem;padding:4px;border:1px solid #d7dbe0;border-radius:5px" />`;
-        el.querySelector("input").addEventListener("input", (e) => { item.caption = e.target.value; scheduleAutoSave(); });
+        el.querySelector("input").addEventListener("input", (e) => { item.caption = e.target.value; touched.add(key); scheduleAutoSave(); });
         el.querySelector("button").addEventListener("click", async () => {
           if (item.path) { try { await removePhoto(item.path); } catch (err) {} }
           const i = photosByKey[key].indexOf(item);
           if (i >= 0) photosByKey[key].splice(i, 1);
+          touched.add(key);
           renderThumbs(key);
           scheduleAutoSave();
         });
@@ -184,6 +187,7 @@
             await uploadPhoto(path, c.bytes);
             item.path = path; item.w = c.w; item.h = c.h; item.url = photoUrl(path);
             item.uploading = false; item.file = null;
+            touched.add(key);
             renderThumbs(key);
             scheduleAutoSave();
           } catch (err) {
@@ -223,10 +227,21 @@
       }
       return photos;
     }
+    // 저장: 서버 최신본을 가져와 "내가 편집한 시설만" 덮어씀(다른 담당자 것 보존)
     async function saveDate(d) {
+      const latest = await loadLog(d).catch(() => null);
+      const contents = { ...((latest && latest.contents) || {}) };
+      const photos = { ...((latest && latest.photos) || {}) };
+      const curC = gatherContents();
+      const curP = gatherPhotos();
+      for (const key of touched) {
+        contents[key] = curC[key] || "";
+        if (curP[key]) photos[key] = curP[key]; else delete photos[key];
+      }
+      const weather = weatherTouched ? weatherEl.value : ((latest && latest.weather) ?? weatherEl.value);
       await saveLog({
         log_date: d, weekday: WD[new Date(d + "T00:00:00").getDay()],
-        weather: weatherEl.value, contents: gatherContents(), photos: gatherPhotos(),
+        weather, contents, photos,
       });
     }
 
@@ -256,6 +271,8 @@
         setStatus(log ? `📂 ${dateEl.value} 저장본 불러옴` : `🆕 ${dateEl.value} 새 일지`, "ok");
         prevDate = dateEl.value;
         dirty = false;
+        touched.clear();          // 불러온 뒤엔 편집한 것 없음
+        weatherTouched = false;
       } catch (err) {
         setStatus("불러오기 오류: " + err.message + " (테이블 생성됐나요?)", "err");
       } finally {
@@ -281,9 +298,9 @@
         }
       }, 1500);
     }
-    weatherEl.addEventListener("input", scheduleAutoSave);
+    weatherEl.addEventListener("input", () => { weatherTouched = true; scheduleAutoSave(); });
     for (const ta of document.querySelectorAll("textarea[data-key]"))
-      ta.addEventListener("input", scheduleAutoSave);
+      ta.addEventListener("input", () => { touched.add(ta.dataset.key); scheduleAutoSave(); });
 
     // 날짜 변경: 막지 않고 이동(현재 내용은 저장) + 안내 메시지
     dateEl.addEventListener("change", async () => {
