@@ -65,6 +65,7 @@
           <input type="text" id="weather" placeholder="예: 맑음" />
         </div>
       </div>
+      <div id="dateWarn" style="display:none;margin-top:12px;background:#fff6e6;border-left:4px solid #e0a800;padding:9px 13px;border-radius:6px;font-size:.85rem;color:#8a6d00">⚠️ <b>오늘 날짜가 아닙니다.</b> 과거·미래 날짜에 작성 중이에요 — 저장할 때 한 번 더 확인합니다.</div>
     </div>
 
     <div id="facilities">
@@ -206,6 +207,7 @@
     const dateEl = document.getElementById("date");
     const wdEl = document.getElementById("weekday");
     const weatherEl = document.getElementById("weather");
+    const dateWarn = document.getElementById("dateWarn");
     function syncWeekday() {
       if (!dateEl.value) { wdEl.value = ""; return; }
       wdEl.value = WD[new Date(dateEl.value + "T00:00:00").getDay()];
@@ -248,6 +250,17 @@
     let suppressSave = false;    // 불러오기 중 자동저장 방지
     let prevDate = dateEl.value; // 직전 날짜
     let dirty = false;           // 저장 안 된 변경
+    let confirmedSaveDate = null; // 오늘 아닌 날짜 저장 확인을 마친 날짜
+
+    const todayStr = () => new Date().toISOString().slice(0, 10);
+    // 오늘이 아닌 날짜면 저장 전 확인(그 날짜당 1회)
+    function okToSave() {
+      const d = dateEl.value;
+      if (d === todayStr() || confirmedSaveDate === d) return true;
+      const ok = confirm(`⚠️ 오늘(${todayStr()})이 아닙니다.\n\n${d} 날짜에 저장하려고 합니다.\n이 날짜가 맞습니까? 저장할까요?`);
+      if (ok) confirmedSaveDate = d;
+      return ok;
+    }
 
     // 저장된 내용 불러와 폼 채우기
     async function loadForDate() {
@@ -273,6 +286,9 @@
         dirty = false;
         touched.clear();          // 불러온 뒤엔 편집한 것 없음
         weatherTouched = false;
+        confirmedSaveDate = null; // 날짜 바뀌면 저장 확인 다시
+        // 오늘이 아닌 날짜면 눈에 띄게 표시
+        dateWarn.style.display = dateEl.value === todayStr() ? "none" : "block";
       } catch (err) {
         setStatus("불러오기 오류: " + err.message + " (테이블 생성됐나요?)", "err");
       } finally {
@@ -288,6 +304,7 @@
       setStatus("✎ 편집 중…");
       clearTimeout(saveTimer);
       saveTimer = setTimeout(async () => {
+        if (!okToSave()) { setStatus(`⚠️ 저장 취소됨 — ${dateEl.value}는 오늘이 아니에요`, "err"); return; }
         try {
           await saveDate(dateEl.value);
           dirty = false;
@@ -320,6 +337,7 @@
     // 수동 저장 버튼 (즉시)
     document.getElementById("save").addEventListener("click", async (e) => {
       if (!dateEl.value) { setStatus("날짜를 선택하세요.", "err"); return; }
+      if (!okToSave()) { setStatus("저장 취소됨 — 날짜를 확인하세요", "err"); return; }
       e.currentTarget.disabled = true;
       setStatus("저장 중…");
       try {
