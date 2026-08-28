@@ -85,8 +85,9 @@
     .dl-title { font-size:.72rem; color:var(--muted); font-weight:700; }
     .ghost { background:var(--surface-2); color:var(--ink); border:1px solid var(--line-strong); }
     .ghost:hover { background:var(--accent-weak); border-color:var(--accent-border); color:var(--accent); }
-    .dl-row { display:flex; gap:6px; align-items:center; }
-    .dl-row input[type=month] { flex:1; min-width:0; border:1px solid var(--line-strong); border-radius:8px; padding:7px 8px; background:var(--surface); }
+    .dl-month { display:flex; flex-direction:column; gap:6px; margin-top:3px; }
+    .dl-mlabel { font-size:.72rem; color:var(--muted); font-weight:700; }
+    .dl-month input[type=month] { width:100%; border:1px solid var(--line-strong); border-radius:8px; padding:8px 9px; background:var(--surface); }
     .saved { font-size:.74rem; color:var(--muted); min-height:1.1em; }
     .saved.ok { color:var(--green); }
     .save-row { display:flex; align-items:center; gap:9px; }
@@ -197,9 +198,13 @@
           <span class="saved" id="status"></span>
         </div>
         <div class="dl-box">
-          <div class="dl-title">📄 한글 다운로드</div>
-          <button class="ghost btn-block" id="download">이 날 하루</button>
-          <div class="dl-row"><input type="month" id="month" /><button class="primary" id="monthDownload" style="padding:7px 12px">한달</button></div>
+          <div class="dl-title">📄 한글파일 다운로드</div>
+          <button class="ghost btn-block" id="download">📄 일일 업무일지 다운로드</button>
+          <div class="dl-month">
+            <span class="dl-mlabel">📅 월간 (한 달 전체)</span>
+            <input type="month" id="month" />
+            <button class="primary btn-block" id="monthDownload">월간 다운로드</button>
+          </div>
         </div>
       </div>
     </aside>
@@ -754,7 +759,14 @@
     // 한 달치 다운로드
     const monthEl = document.getElementById("month");
     monthEl.value = dateEl.value.slice(0, 7);
-    document.getElementById("monthDownload").addEventListener("click", async (e) => {
+    const monthBtn = document.getElementById("monthDownload");
+    function syncMonthBtn() {
+      const v = monthEl.value;
+      monthBtn.textContent = v ? `📄 ${parseInt(v.slice(5, 7), 10)}월 업무일지 다운로드` : "📄 월간 다운로드";
+    }
+    syncMonthBtn();
+    monthEl.addEventListener("input", syncMonthBtn);
+    monthBtn.addEventListener("click", async (e) => {
       const ym = monthEl.value;
       if (!ym) { setStatus("월을 선택하세요.", "err"); return; }
       const btn = e.currentTarget; btn.disabled = true;
