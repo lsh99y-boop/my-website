@@ -244,6 +244,8 @@
     let weatherTouched = false;  // 날씨를 내가 바꿨나
 
     const fc = document.getElementById("facilities");
+    // Supabase Storage 키는 ASCII만 허용 → 한글(국·송신소) 경로를 안전하게 인코딩
+    const safeSeg = (s) => (s || "").replace(/[^A-Za-z0-9._-]/g, (c) => "_" + c.charCodeAt(0).toString(16));
     const emptyBlock = () => ({ id: ++blkSeq, text: "", photos: [] });
     const allPhotosOf = (key) => (models[key] || []).flatMap((b) => b.photos);
     const findBlock = (key, blkId) => (models[key] || []).find((b) => b.id === blkId);
@@ -258,14 +260,14 @@
         renderThumbs(key, blkId); updateFacStatus(key);
         try {
           const c = await compressImage(f);
-          const path = `${currentOffice}/${dateEl.value}/${key}/${item.id}_${Date.now()}.jpg`;
+          const path = `${safeSeg(currentOffice)}/${dateEl.value}/${safeSeg(key)}/${item.id}_${Date.now()}.jpg`;
           await uploadPhoto(path, c.bytes);
           item.path = path; item.w = c.w; item.h = c.h; item.url = photoUrl(path);
           item.uploading = false; item.file = null;
           touched.add(key); renderThumbs(key, blkId); updateFacStatus(key); scheduleAutoSave();
         } catch (err) {
           item.uploading = false;
-          setStatus("사진 업로드 실패 (photos 버킷 필요)", "err");
+          setStatus("사진 업로드 실패: " + (err && err.message || err), "err");
           renderThumbs(key, blkId);
         }
       }
