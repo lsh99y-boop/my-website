@@ -38,7 +38,7 @@
     .menu input[type=month] { border:1px solid var(--line); border-radius:6px; padding:5px 7px; }
 
     /* 레이아웃: 사이드바 + 본문 */
-    .layout { max-width:1180px; margin:14px auto; padding:0 16px 90px; display:grid; grid-template-columns:230px 1fr; gap:20px; align-items:start; }
+    .layout { max-width:1360px; margin:14px auto; padding:0 16px 90px; display:grid; grid-template-columns:230px 1fr; gap:20px; align-items:start; }
     .sidebar { position:sticky; top:64px; align-self:start; }
     .prog { background:#fff; border:1px solid var(--line); border-radius:10px; padding:12px 14px; margin-bottom:10px; }
     .prog .n { font-weight:800; font-size:1.05rem; } .prog .n b { color:var(--accent); }
@@ -56,6 +56,11 @@
 
     /* 본문 */
     .content { max-width:800px; }
+    /* 한 시설만 볼 때: 넓게 + 크게 */
+    .content.focus { max-width:100%; }
+    .content.focus .fac { padding:22px 26px; }
+    .content.focus .fac-name { font-size:1.35rem; }
+    .content.focus .fac textarea { min-height:300px; font-size:1.05rem; }
     .hint-top { color:var(--muted); font-size:.82rem; margin:0 2px 12px; }
     .warn { background:#fff6e6; border-left:4px solid #e0a800; padding:9px 13px; border-radius:6px; font-size:.85rem; color:#8a6d00; margin-bottom:12px; }
     #facilities { display:flex; flex-direction:column; gap:14px; }
@@ -247,6 +252,7 @@
     function applyView(key) {
       const all = key === "__all__";
       for (const f of fc.querySelectorAll(".fac")) f.style.display = (all || f.dataset.fac === key) ? "" : "none";
+      fc.closest(".content").classList.toggle("focus", !all);
       document.querySelectorAll(".navitem").forEach((x) => x.classList.toggle("active", x.dataset.nav === key));
       window.scrollTo({ top: 0, behavior: "smooth" });
       if (!all) {
