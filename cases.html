@@ -104,6 +104,14 @@
         <div class="field"><label>세부 2</label><input id="detail2" /></div>
         <div class="field" style="grid-column: 1 / -1"><label>보고서 제목 <span style="color:var(--muted);font-weight:400">(비우면 자동 생성)</span></label><input id="title" placeholder="예: 계룡산(송) 2TV 냉각호스 누수" /></div>
       </div>
+      <hr class="sep" />
+      <div style="font-weight:600;font-size:.9rem;margin-bottom:8px">📷 사진 <span style="color:var(--muted);font-weight:400;font-size:.8rem">(선택 · 최대 8장 · 앞 4장=소제목1, 다음 4장=소제목2 · 자동 압축)</span></div>
+      <div class="grid" style="margin-bottom:10px">
+        <div class="field"><label>소제목1 (사진 1~4)</label><input id="sub1" placeholder="예: 냉각호스 누수 및 분리" /></div>
+        <div class="field"><label>소제목2 (사진 5~8)</label><input id="sub2" placeholder="예: 제작 및 교체" /></div>
+      </div>
+      <input type="file" id="photoInput" accept="image/*" multiple />
+      <div id="thumbs" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px;margin-top:10px"></div>
       <div class="row-btns">
         <button class="primary" id="saveBtn">💾 등록</button>
         <button class="blue" id="reportBtn">📄 장애보고서 다운로드</button>
@@ -121,6 +129,8 @@
     import { buildFaultReport } from "./faultReport.js";
     import { downloadBlob } from "./hwpx.js";
     import { OFFICE_LIST, OFFICES } from "./sites.js";
+    import { compressImage } from "./photo.js";
+    import { uploadPhoto, photoUrl, removePhoto, fetchPhotoBytes } from "./photoStorage.js";
 
     // PIN
     const APP_PIN = "7590";
@@ -138,6 +148,50 @@
     const $ = (id) => document.getElementById(id);
     const status = $("status");
     const setStatus = (m, c) => { status.textContent = m; status.className = c || ""; };
+
+    // ===== 사진 =====
+    let photos = []; // {id, file?, caption, path?, w, h, url?, uploading?}
+    let photoSeq = 0;
+    function renderThumbs() {
+      const box = $("thumbs");
+      box.innerHTML = "";
+      photos.forEach((item, idx) => {
+        const src = item.url || (item.file ? URL.createObjectURL(item.file) : "");
+        const el = document.createElement("div");
+        el.style.cssText = "position:relative";
+        el.innerHTML = `<div style="position:relative">
+            <img src="${src}" style="width:100%;height:82px;object-fit:cover;border-radius:5px;border:1px solid #d7dbe0${item.uploading ? ";opacity:.4" : ""}" />
+            <span style="position:absolute;top:2px;left:2px;background:#2f6fed;color:#fff;font-size:.66rem;font-weight:700;padding:1px 6px;border-radius:4px">${idx + 1}${idx < 4 ? "" : "·2"}</span>
+            ${item.uploading ? '<span style="position:absolute;bottom:2px;left:2px;background:rgba(0,0,0,.65);color:#fff;font-size:.6rem;padding:1px 5px;border-radius:4px">올리는중…</span>' : ""}
+            <button title="삭제" style="position:absolute;top:2px;right:2px;background:rgba(0,0,0,.6);color:#fff;border:0;border-radius:50%;width:20px;height:20px;cursor:pointer;font-size:.7rem;padding:0">×</button>
+          </div>
+          <input type="text" placeholder="캡션" value="${(item.caption || "").replace(/"/g, "&quot;")}" style="width:100%;margin-top:4px;font-size:.72rem;padding:4px;border:1px solid #d7dbe0;border-radius:5px" />`;
+        el.querySelector("input").addEventListener("input", (e) => { item.caption = e.target.value; });
+        el.querySelector("button").addEventListener("click", async () => {
+          if (item.path) { try { await removePhoto(item.path); } catch (e) {} }
+          const i = photos.indexOf(item); if (i >= 0) photos.splice(i, 1);
+          renderThumbs();
+        });
+        box.appendChild(el);
+      });
+    }
+    $("photoInput").addEventListener("change", async (e) => {
+      const files = [...e.target.files]; e.target.value = "";
+      for (const f of files) {
+        if (photos.length >= 8) { setStatus("사진은 최대 8장입니다.", "err"); break; }
+        const item = { id: ++photoSeq, file: f, caption: "", uploading: true };
+        photos.push(item); renderThumbs();
+        try {
+          const c = await compressImage(f);
+          const path = `fault/${item.id}_${Date.now()}.jpg`;
+          await uploadPhoto(path, c.bytes);
+          item.path = path; item.w = c.w; item.h = c.h; item.url = photoUrl(path); item.uploading = false;
+          renderThumbs();
+        } catch (err) {
+          item.uploading = false; setStatus("사진 업로드 실패: " + err.message + " (photos 버킷 필요)", "err"); renderThumbs();
+        }
+      }
+    });
 
     // 드롭다운 채우기
     function fillOffices(sel, withAll) {
@@ -200,7 +254,7 @@
 
     // ===== 폼 =====
     let currentId = null;
-    const FORM_FIELDS = ["office", "dept", "site", "equip_type", "fault_date", "equipment", "model", "authors", "symptom", "action", "plan", "detail1", "detail2", "title"];
+    const FORM_FIELDS = ["office", "dept", "site", "equip_type", "fault_date", "equipment", "model", "authors", "symptom", "action", "plan", "detail1", "detail2", "title", "sub1", "sub2"];
     function readForm() {
       const c = {};
       for (const f of FORM_FIELDS) c[f] = $(f).value || null;
@@ -224,6 +278,7 @@
       $("formTitle").textContent = "➕ 새 사례 등록";
       $("saveBtn").textContent = "💾 등록";
       $("delBtn").style.display = "none";
+      photos = []; renderThumbs();
       setStatus("");
     }
     async function loadIntoForm(id) {
@@ -232,6 +287,8 @@
         if (!c) return;
         currentId = id;
         writeForm(c);
+        photos = (c.photos || []).map((p) => ({ id: ++photoSeq, caption: p.caption || "", path: p.path, w: p.w, h: p.h, url: photoUrl(p.path) }));
+        renderThumbs();
         $("formTitle").textContent = "✏️ 사례 수정";
         $("saveBtn").textContent = "💾 수정 저장";
         $("delBtn").style.display = "";
@@ -246,6 +303,7 @@
       const c = readForm();
       if (!c.office || !c.site) { setStatus("소속국·송신소를 선택하세요.", "err"); return; }
       c.title = autoTitle(c);
+      c.photos = photos.filter((p) => p.path).map((p) => ({ path: p.path, caption: p.caption || "", w: p.w, h: p.h }));
       e.currentTarget.disabled = true; setStatus("저장 중…");
       try {
         if (currentId) { await updateCase(currentId, c); setStatus(`✅ #${currentId} 수정 완료`, "ok"); }
@@ -265,11 +323,19 @@
       const c = readForm(); c.title = autoTitle(c);
       e.currentTarget.disabled = true; setStatus("보고서 생성 중…");
       try {
+        // 사진 바이트 가져오기 (업로드 완료된 것)
+        const ready = photos.filter((p) => p.path);
+        const withBytes = [];
+        for (let i = 0; i < ready.length; i++) {
+          setStatus(`사진 불러오는 중… (${i + 1}/${ready.length})`);
+          withBytes.push({ idref: "fp" + i, bytes: await fetchPhotoBytes(ready[i].path), w: ready[i].w, h: ready[i].h, caption: ready[i].caption });
+        }
+        setStatus("보고서 생성 중…");
         const d = (c.fault_date || "").replace(/-/g, ".");
-        const blob = await buildFaultReport({ ...c, fault_date: d });
+        const blob = await buildFaultReport({ ...c, fault_date: d }, withBytes);
         const fname = `장애보고서_${(c.site || "")}_${(c.model || c.equip_type || "")}.hwpx`;
         downloadBlob(blob, fname);
-        setStatus("✅ 장애보고서 다운로드 완료", "ok");
+        setStatus(`✅ 장애보고서 다운로드 완료${withBytes.length ? ` (사진 ${withBytes.length}장)` : ""}`, "ok");
       } catch (err) { setStatus("보고서 오류: " + err.message, "err"); }
       finally { e.currentTarget.disabled = false; }
     });

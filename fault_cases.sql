@@ -19,6 +19,9 @@ create table if not exists public.fault_cases (
   title      text,          -- 보고서 제목
   authors    text,          -- 작성자
   fault_date date,          -- 날짜
+  sub1       text,          -- 사진 소제목1
+  sub2       text,          -- 사진 소제목2
+  photos     jsonb not null default '[]'::jsonb,  -- 사진 [{path,caption,w,h}]
   created_at timestamptz not null default now()
 );
 
