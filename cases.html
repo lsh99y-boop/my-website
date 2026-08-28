@@ -390,7 +390,7 @@
       for (const f of FORM_FIELDS) $(f).value = "";
       $("office").value = OFFICE_LIST[0]; fillSites($("site"), OFFICE_LIST[0], false);
       $("dept").value = deptDefault($("office").value);
-      $("fault_date").value = new Date().toISOString().slice(0, 10);
+      { const d = new Date(); $("fault_date").value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; }
       photos = []; renderThumbs();
       $("formTitle").textContent = "➕ 새 사례 등록"; $("saveBtn").textContent = "💾 등록"; $("delBtn").style.display = "none";
       setFStatus("");

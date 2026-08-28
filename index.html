@@ -244,6 +244,8 @@
     })();
 
     const WD = ["일","월","화","수","목","금","토"];
+    // 로컬(단말 시간대, 한국=KST) 기준 오늘 날짜 — toISOString(UTC)은 새벽에 어제로 잡히는 문제
+    const localDate = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
     let currentOffice = localStorage.getItem("ilji_office") || "대전";
     let FACILITIES = facilitiesFor(currentOffice); // [[label, key], ...]
@@ -564,7 +566,7 @@
     let dirty = false;           // 저장 안 된 변경
     let confirmedSaveDate = null; // 오늘 아닌 날짜 저장 확인을 마친 날짜
 
-    const todayStr = () => new Date().toISOString().slice(0, 10);
+    const todayStr = () => localDate();
     // 오늘이 아닌 날짜면 저장 전 확인(그 날짜당 1회)
     function okToSave() {
       const d = dateEl.value;
@@ -649,7 +651,7 @@
       setStatus(`📅 ${newDate} 로 이동 — ${old} 내용은 저장됨`, "ok");
     });
     buildFacilityCards();          // 국별 시설 카드 생성
-    dateEl.value = new Date().toISOString().slice(0, 10);
+    dateEl.value = localDate();
     prevDate = dateEl.value;
     loadForDate();
     cleanupOld(6).catch(() => {}); // 6개월 지난 일지 자동 정리(조용히)
