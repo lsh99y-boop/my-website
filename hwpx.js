@@ -1,17 +1,14 @@
-// 일일업무일지 hwpx 생성기 (브라우저)
-// 토큰 템플릿(assets/template_ilji.hwpx)을 불러와 입력값·사진으로 채운 뒤 .hwpx 다운로드.
+// 일일업무일지 hwpx 생성기 (브라우저) — 국별 가변 시설행
+// 가변 템플릿(assets/template_daylog.hwpx)의 {{FACILITY_ROWS}}/{{ROWCNT}}를 국별로 채운 뒤 토큰 채움.
 import JSZip from "https://esm.sh/jszip@3.10.1";
 import { buildCellPhotos } from "./photo.js";
 import { fetchPhotoBytes } from "./photoStorage.js";
+import { facilitiesFor } from "./sites.js";
+import { ROW_TEMPLATE } from "./daylog-templates.js";
 
-const TEMPLATE_URL = "assets/template_ilji.hwpx";
+const TEMPLATE_URL = "assets/template_daylog.hwpx";
 const BULLET = "◎";
-
-// 시설 키 → 내용칸 표 rowAddr (colAddr는 2 고정)
-const KEY_ROW = {
-  C_song: 4, C_tvram: 5, C_gr: 6, C_sj: 7,
-  C_hs: 8, C_wh: 9, C_minwon: 10, C_teuki: 11,
-};
+const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
 
 function esc(s) {
   return (s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -19,18 +16,36 @@ function esc(s) {
 function fillLine(s, token, v) {
   return s.split(token).join(esc(v));
 }
+
+// 국의 업무구분 행 XML + rowCnt
+function officeRows(office) {
+  const facs = facilitiesFor(office);
+  let rows = "";
+  facs.forEach(([label, key], i) => {
+    rows += ROW_TEMPLATE
+      .split("{{LABEL}}").join(esc(label))
+      .split("{{ROW}}").join(String(4 + i))
+      .split("{{TOKEN}}").join("{{" + key + "}}");
+  });
+  return { rows, rowCnt: 4 + facs.length };
+}
+// {{FACILITY_ROWS}}/{{ROWCNT}} 채우기
+function applyOfficeRows(str, office) {
+  const { rows, rowCnt } = officeRows(office);
+  return str.split("{{FACILITY_ROWS}}").join(rows).split("{{ROWCNT}}").join(String(rowCnt));
+}
+
 // 사진 마커: [사진1], [사진 1,2], [그림3] 등
 const PHOTO_MARKER = /\[(?:사진|그림)\s*([\d,\s]+)\]/g;
 
-// 한 시설 내용칸을 채움: 텍스트(줄별 문단) + 마커 위치에 사진 박스 + 마커 없는 사진은 맨 아래.
-// photos: [{idref, w, h}]
+// 한 시설 내용칸 채움: 텍스트(줄별) + 마커 위치 사진 + 나머지 사진(맨 아래). photos:[{idref,w,h,caption}]
 function fillFacility(s, key, text, photos) {
   const token = `{{${key}}}`;
   const ti = s.indexOf(token);
   if (ti < 0) return s;
   const pstart = s.lastIndexOf("<hp:p ", ti);
   const pend = s.indexOf("</hp:p>", ti) + "</hp:p>".length;
-  const paraTpl = s.slice(pstart, pend); // ◎ 토큰 문단 템플릿
+  const paraTpl = s.slice(pstart, pend);
 
   const textPara = (str, keepBullet) => {
     let p = paraTpl.split(token).join(esc(str));
@@ -59,101 +74,82 @@ function fillFacility(s, key, text, photos) {
       if (nums.length) out.push(boxOf(nums));
     }
   }
-  if (!out.length) out.push(textPara("", true)); // 완전 빈 칸: ◎만
-  // 마커 안 쓴 사진은 맨 아래
+  if (!out.length) out.push(textPara("", true));
   const rest = (photos || []).map((_, i) => i).filter((i) => !used.has(i));
   if (rest.length) out.push(boxOf(rest));
 
   return s.slice(0, pstart) + out.join("") + s.slice(pend);
 }
 
-// data: {MM,DD,WD,WX, C_song,...,C_teuki}  (텍스트)
-// photosByKey: {C_song:[{idref,bytes,w,h}], ...}  (시설별 사진)
-export async function buildHwpx(data, photosByKey = {}) {
+// 하루 템플릿에 날짜+시설 채우기. data: {MM,DD,WD,WX, <각 시설키>:텍스트}
+function fillDay(tmpl, office, data, photosByKey = {}) {
+  let s = tmpl;
+  for (const k of ["MM", "DD", "WD", "WX"]) s = fillLine(s, `{{${k}}}`, data[k]);
+  const keys = facilitiesFor(office).map((f) => f[1]);
+  for (const key of keys) s = fillFacility(s, key, data[key] || "", photosByKey[key] || []);
+  return s.replace(/\{\{[^}]+\}\}/g, "");
+}
+
+async function loadTemplate() {
   const buf = await fetch(TEMPLATE_URL).then((r) => {
     if (!r.ok) throw new Error("템플릿을 불러오지 못했습니다: " + r.status);
     return r.arrayBuffer();
   });
-  const zip = await JSZip.loadAsync(buf);
+  return await JSZip.loadAsync(buf);
+}
+function manifestFor(photos) {
+  return photos
+    .map((p) => `<opf:item id="${p.idref}" href="BinData/${p.idref}.jpg" media-type="image/jpeg" isEmbeded="1"/>`)
+    .join("");
+}
+
+// 하루치: office=국, data={MM,DD,WD,WX,<시설키>:텍스트}, photosByKey={키:[{idref,bytes,w,h,caption}]}
+export async function buildHwpx(office, data, photosByKey = {}) {
+  const zip = await loadTemplate();
   let sec = await zip.file("Contents/section0.xml").async("string");
   let hpf = await zip.file("Contents/content.hpf").async("string");
 
-  // 날짜/요일/날씨
-  for (const k of ["MM", "DD", "WD", "WX"]) sec = fillLine(sec, `{{${k}}}`, data[k]);
-  // 8개 내용 칸: 텍스트 + 마커 위치 사진 + 나머지 사진(맨 아래)
+  sec = applyOfficeRows(sec, office);
+  sec = fillDay(sec, office, data, photosByKey);
+
   const allPhotos = [];
-  for (const key of Object.keys(KEY_ROW)) {
-    const photos = photosByKey[key] || [];
-    sec = fillFacility(sec, key, data[key], photos);
-    allPhotos.push(...photos);
-  }
-  sec = sec.replace(/\{\{[^}]+\}\}/g, "");
+  for (const k in photosByKey) allPhotos.push(...photosByKey[k]);
+  if (allPhotos.length) hpf = hpf.replace('<opf:item id="header"', manifestFor(allPhotos) + '<opf:item id="header"');
 
-  if (allPhotos.length) {
-    const items = allPhotos
-      .map((p) => `<opf:item id="${p.idref}" href="BinData/${p.idref}.jpg" media-type="image/jpeg" isEmbeded="1"/>`)
-      .join("");
-    hpf = hpf.replace('<opf:item id="header"', items + '<opf:item id="header"');
-  }
-
-  // hwpx 재조립: mimetype을 맨 앞·무압축으로
   const files = [];
   zip.forEach((path, f) => { if (!f.dir) files.push(path); });
   const out = new JSZip();
-  const mime = await zip.file("mimetype").async("uint8array");
-  out.file("mimetype", mime, { compression: "STORE" });
+  out.file("mimetype", await zip.file("mimetype").async("uint8array"), { compression: "STORE" });
   for (const path of files) {
     if (path === "mimetype") continue;
     if (path === "Contents/section0.xml") out.file(path, sec, { compression: "DEFLATE" });
     else if (path === "Contents/content.hpf") out.file(path, hpf, { compression: "DEFLATE" });
-    else {
-      const content = await zip.file(path).async("uint8array");
-      out.file(path, content, { compression: "DEFLATE" });
-    }
+    else out.file(path, await zip.file(path).async("uint8array"), { compression: "DEFLATE" });
   }
   for (const p of allPhotos) out.file(`BinData/${p.idref}.jpg`, p.bytes, { compression: "STORE" });
-
   return await out.generateAsync({ type: "blob" });
 }
 
-// 하루 템플릿(문단들)에 한 날짜 데이터 채우기. dayPhotos: {key:[{idref,w,h,caption}]}
-const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
-function fillDay(tmpl, day, dayPhotos = {}) {
-  const [, M, D] = day.log_date.split("-");
-  const wd = day.weekday || WEEKDAYS[new Date(day.log_date + "T00:00:00").getDay()];
-  let s = tmpl;
-  s = fillLine(s, "{{MM}}", M);
-  s = fillLine(s, "{{DD}}", D);
-  s = fillLine(s, "{{WD}}", wd);
-  s = fillLine(s, "{{WX}}", day.weather || "");
-  const contents = day.contents || {};
-  for (const key of Object.keys(KEY_ROW))
-    s = fillFacility(s, key, contents[key] || "", dayPhotos[key] || []);
-  return s.replace(/\{\{[^}]+\}\}/g, "");
-}
-
-// 여러 날(days) → 하루 양식을 날짜순으로 이어붙인 한 파일 hwpx.
-// day.photos: {key:[{path,w,h,caption}]} 이 있으면 Storage에서 가져와 임베드.
-export async function buildMonthHwpx(days) {
-  const buf = await fetch(TEMPLATE_URL).then((r) => {
-    if (!r.ok) throw new Error("템플릿 로드 실패: " + r.status);
-    return r.arrayBuffer();
-  });
-  const zip = await JSZip.loadAsync(buf);
+// 한 달치: office=국, days=[{log_date,weekday,weather,contents:{키:텍스트},photos:{키:[{path,w,h,caption}]}}]
+export async function buildMonthHwpx(office, days) {
+  const zip = await loadTemplate();
   const sec0 = await zip.file("Contents/section0.xml").async("string");
-
   const decl = (sec0.match(/^<\?xml[^>]*\?>/) || ['<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>'])[0];
   const rootOpen = sec0.match(/<hs:sec\b[^>]*>/)[0];
-  const body = sec0.slice(sec0.indexOf(rootOpen) + rootOpen.length, sec0.lastIndexOf("</hs:sec>"));
+  let body = sec0.slice(sec0.indexOf(rootOpen) + rootOpen.length, sec0.lastIndexOf("</hs:sec>"));
+  body = applyOfficeRows(body, office); // 시설행 채움(날짜/내용 토큰은 남김)
   const secPr = (body.match(/<hp:secPr\b[\s\S]*?<\/hp:secPr>/) || [""])[0];
   const bodyNoSec = secPr ? body.replace(secPr, "") : body;
 
-  const bin = [];              // {arc, bytes}
+  const bin = [];
   const manifestItems = [];
   let seq = 0, out = "";
   for (let i = 0; i < days.length; i++) {
     const day = days[i];
-    // 이 날의 사진들: Storage에서 바이트 가져오고 고유 idref 부여
+    const [, M, D] = day.log_date.split("-");
+    const wd = day.weekday || WEEKDAYS[new Date(day.log_date + "T00:00:00").getDay()];
+    const data = { MM: M, DD: D, WD: wd, WX: day.weather || "", ...(day.contents || {}) };
+    // 사진: Storage에서 바이트
     const dayPhotos = {};
     const dp = day.photos || {};
     for (const key in dp) {
@@ -164,16 +160,15 @@ export async function buildMonthHwpx(days) {
           bin.push({ arc: `BinData/${idref}.jpg`, bytes: await fetchPhotoBytes(p.path) });
           manifestItems.push(`<opf:item id="${idref}" href="BinData/${idref}.jpg" media-type="image/jpeg" isEmbeded="1"/>`);
           dayPhotos[key].push({ idref, w: p.w, h: p.h, caption: p.caption });
-        } catch (e) { /* 사진 하나 실패해도 계속 */ }
+        } catch (e) { /* skip */ }
       }
     }
     const tmpl = i === 0 ? body : bodyNoSec.replace('pageBreak="0"', 'pageBreak="1"');
-    out += fillDay(tmpl, day, dayPhotos);
+    out += fillDay(tmpl, office, data, dayPhotos);
   }
   const newSec = decl + rootOpen + out + "</hs:sec>";
   let hpf = await zip.file("Contents/content.hpf").async("string");
-  if (manifestItems.length)
-    hpf = hpf.replace('<opf:item id="header"', manifestItems.join("") + '<opf:item id="header"');
+  if (manifestItems.length) hpf = hpf.replace('<opf:item id="header"', manifestItems.join("") + '<opf:item id="header"');
 
   const files = [];
   zip.forEach((path, f) => { if (!f.dir) files.push(path); });
