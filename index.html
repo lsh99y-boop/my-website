@@ -101,9 +101,9 @@
     .content.focus { max-width:100%; }
     .content.focus .fac { padding:24px 28px; }
     .content.focus .fac-name { font-size:1.4rem; }
-    .content.focus .fac .blk textarea { font-size:1.05rem; min-height:150px; }
-    /* 항목이 하나면 화면 아래(사이드바 끝)까지 크게 */
-    .content.focus .fac .blocks .blk:only-child textarea { min-height:max(280px, calc(100vh - 360px)); }
+    .content.focus .fac .blk textarea { font-size:1.05rem; min-height:130px; }
+    /* 항목 하나: 처음엔 적당히, 내용 많아지면 자동으로 늘어남 */
+    .content.focus .fac .blocks .blk:only-child textarea { min-height:260px; }
     .hint-top { color:var(--muted); font-size:.82rem; margin:0 2px 14px; }
     .warn { background:var(--amberbg); border-left:4px solid var(--amber); padding:10px 14px; border-radius:8px; font-size:.85rem; color:var(--amber); margin-bottom:14px; }
     #facilities { display:flex; flex-direction:column; gap:16px; }
@@ -135,7 +135,10 @@
     .charbar { display:flex; flex-wrap:wrap; gap:5px; margin-top:7px; }
     .chbtn { font-size:.98rem; line-height:1; min-width:34px; padding:7px 9px; background:var(--surface); border:1px solid var(--line-strong); border-radius:8px; color:var(--ink); cursor:pointer; }
     .chbtn:hover { background:var(--accent-weak); border-color:var(--accent-border); color:var(--accent); }
-    .blk .dropzone { margin-top:8px; padding:9px; font-size:.8rem; border-radius:9px; }
+    .blk .dropzone { margin-top:11px; padding:18px 14px; border-radius:12px; border-color:var(--accent-border); }
+    .dropzone:hover { border-color:var(--accent); background:var(--accent-weak); }
+    .dz-title { font-size:1.02rem; font-weight:800; color:var(--accent); }
+    .dz-sub { font-size:.8rem; color:var(--muted); margin-top:3px; }
     .blk .thumbs { grid-template-columns:repeat(auto-fill,minmax(92px,1fr)); gap:8px; }
     .addblk { width:100%; margin-top:12px; background:transparent; border:1.5px dashed var(--accent-border); color:var(--accent); font-weight:700; border-radius:11px; padding:11px; cursor:pointer; }
     .addblk:hover { background:var(--accent-weak); }
@@ -162,7 +165,7 @@
       .content { order:3; }
       .side-actions { order:4; }
       .blk textarea { min-height:80px; }
-      .content.focus .fac .blocks .blk:only-child textarea { min-height:48vh; }
+      .content.focus .fac .blocks .blk:only-child textarea { min-height:220px; }
     }
   </style>
 </head>
@@ -480,7 +483,7 @@
           </div>
           <textarea placeholder="업무내용을 입력하세요"></textarea>
           <div class="charbar">${SPECIALS.map((ch) => `<button type="button" class="chbtn">${ch}</button>`).join("")}</div>
-          <div class="dropzone" data-drop>📷 사진입력 — 드래그하거나 클릭해서 추가</div>
+          <div class="dropzone" data-drop><div class="dz-title">📷 사진 추가</div><div class="dz-sub">클릭하거나 사진을 여기로 끌어오세요</div></div>
           <input type="file" accept="image/*" multiple style="display:none" />
           <div class="thumbs" data-thumbs></div>`;
         const ta = el.querySelector("textarea");
@@ -536,7 +539,7 @@
         el.innerHTML = `<div style="position:relative">
             <img src="${src}" style="width:100%;height:78px;object-fit:cover;border-radius:6px;border:1px solid var(--line-strong)${item.uploading ? ";opacity:.4" : ""}" />
             ${item.uploading ? '<span style="position:absolute;bottom:2px;left:2px;background:rgba(0,0,0,.65);color:#fff;font-size:.62rem;padding:1px 5px;border-radius:4px">올리는중…</span>' : ""}
-            <button title="삭제" style="position:absolute;top:2px;right:2px;background:rgba(0,0,0,.6);color:#fff;border:0;border-radius:50%;width:20px;height:20px;cursor:pointer;font-size:.7rem;padding:0">×</button>
+            <button title="삭제" style="position:absolute;top:3px;right:3px;background:rgba(0,0,0,.62);color:#fff;border:1.5px solid #fff;border-radius:50%;width:26px;height:26px;cursor:pointer;font-size:.95rem;line-height:1;padding:0">×</button>
           </div>
           <input type="text" placeholder="사진 설명" value="${(item.caption || "").replace(/"/g, "&quot;")}"
                  style="width:100%;margin-top:4px;font-size:.72rem;padding:4px;border:1px solid var(--line-strong);border-radius:5px;background:var(--surface);color:var(--ink)" />`;
