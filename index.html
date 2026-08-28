@@ -101,7 +101,9 @@
     .content.focus { max-width:100%; }
     .content.focus .fac { padding:24px 28px; }
     .content.focus .fac-name { font-size:1.4rem; }
-    .content.focus .fac .blk textarea { font-size:1.02rem; min-height:110px; }
+    .content.focus .fac .blk textarea { font-size:1.05rem; min-height:150px; }
+    /* 항목이 하나면 화면 아래(사이드바 끝)까지 크게 */
+    .content.focus .fac .blocks .blk:only-child textarea { min-height:max(280px, calc(100vh - 360px)); }
     .hint-top { color:var(--muted); font-size:.82rem; margin:0 2px 14px; }
     .warn { background:var(--amberbg); border-left:4px solid var(--amber); padding:10px 14px; border-radius:8px; font-size:.85rem; color:var(--amber); margin-bottom:14px; }
     #facilities { display:flex; flex-direction:column; gap:16px; }
@@ -159,7 +161,8 @@
       .navitem .cnt { display:none; }
       .content { order:3; }
       .side-actions { order:4; }
-      .blk textarea { min-height:60px; }
+      .blk textarea { min-height:80px; }
+      .content.focus .fac .blocks .blk:only-child textarea { min-height:48vh; }
     }
   </style>
 </head>
