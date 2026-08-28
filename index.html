@@ -5,58 +5,85 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>일일업무일지 작성</title>
   <style>
-    :root { --line:#d7dbe0; --bg:#eef1f5; --accent:#2f6fed; --ink:#1a2230; --muted:#6b7480; }
+    :root { --line:#d7dbe0; --bg:#eef1f5; --accent:#2f6fed; --ink:#1a2230; --muted:#6b7480;
+            --green:#067d3b; --greenbg:#e3f0e8; --amber:#b3820a; --amberbg:#fdf2d8; }
     * { box-sizing: border-box; }
     body { font-family: system-ui, "Malgun Gothic", sans-serif; margin: 0; background: var(--bg); color: var(--ink); }
-
-    /* 상단 툴바 (국·날짜·날씨 항상 보임) */
-    .topbar { position: sticky; top: 0; z-index: 50; background: #fff; border-bottom: 1px solid var(--line); box-shadow: 0 1px 4px rgba(0,0,0,.04); }
-    .topbar-inner { max-width: 1120px; margin: 0 auto; padding: 10px 18px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
-    .brand { font-weight: 800; font-size: 1.05rem; white-space: nowrap; }
-    .brand small { display:block; font-weight: 400; color: var(--muted); font-size: .72rem; }
-    .tb-office { display:flex; align-items:center; gap:8px; background:#eef3ff; border:1px solid #cfdcfb; border-radius:10px; padding:5px 8px 5px 12px; }
-    .tb-office label { font-size:.72rem; color:var(--accent); font-weight:700; }
-    #office { font: inherit; font-weight:700; font-size:1rem; border:0; background:transparent; color:var(--accent); cursor:pointer; padding:2px 4px; }
-    .tb-field { display:flex; flex-direction:column; }
-    .tb-field label { font-size:.68rem; color:var(--muted); font-weight:600; }
-    .topbar input, .topbar select { font: inherit; border:1px solid var(--line); border-radius:7px; padding:6px 8px; background:#fff; }
-    .tb-actions { margin-left:auto; display:flex; gap:6px; }
-    .tb-actions a, .tb-actions button { color:var(--accent); background:#fff; text-decoration:none; font-weight:600; font-size:.82rem; white-space:nowrap; border:1px solid #cfdcfb; border-radius:8px; padding:7px 10px; cursor:pointer; }
-
-    main { max-width: 1120px; margin: 16px auto; padding: 0 16px 90px; }
     input, textarea, select { font: inherit; }
     input:focus, textarea:focus, select:focus { outline: 2px solid var(--accent); border-color: var(--accent); }
+    button { font: inherit; font-weight: 600; border: 0; border-radius: 8px; padding: 9px 16px; cursor: pointer; }
+    .primary { background: var(--accent); color:#fff; } .primary:disabled { opacity:.5; cursor:default; }
 
-    .hint-top { color: var(--muted); font-size: .82rem; margin: 4px 2px 12px; }
+    /* 상단 스티키 바 */
+    .topbar { position: sticky; top: 0; z-index: 60; background:#fff; border-bottom:1px solid var(--line); box-shadow:0 1px 4px rgba(0,0,0,.05); }
+    .topbar-inner { max-width:1180px; margin:0 auto; padding:9px 16px; display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+    .brand { font-weight:800; font-size:1rem; white-space:nowrap; margin-right:4px; }
+    .tb-office { display:flex; align-items:center; gap:6px; background:#eef3ff; border:1px solid #cfdcfb; border-radius:10px; padding:4px 8px 4px 11px; }
+    .tb-office label { font-size:.7rem; color:var(--accent); font-weight:700; }
+    #office { font:inherit; font-weight:700; font-size:.98rem; border:0; background:transparent; color:var(--accent); cursor:pointer; }
+    .tb-field { display:flex; flex-direction:column; }
+    .tb-field label { font-size:.66rem; color:var(--muted); font-weight:600; }
+    .topbar input, .topbar select { border:1px solid var(--line); border-radius:7px; padding:6px 8px; background:#fff; }
+    .tb-actions { margin-left:auto; display:flex; gap:6px; align-items:center; }
+    .tb-btn { color:var(--accent); background:#fff; text-decoration:none; font-weight:600; font-size:.82rem; white-space:nowrap; border:1px solid #cfdcfb; border-radius:8px; padding:8px 11px; cursor:pointer; }
+    .saved { font-size:.74rem; color:var(--muted); white-space:nowrap; }
+    .saved.ok { color:var(--green); }
+    /* 다운로드 메뉴 */
+    .menuwrap { position:relative; }
+    .menu { display:none; position:absolute; right:0; top:110%; background:#fff; border:1px solid var(--line); border-radius:10px; box-shadow:0 6px 20px rgba(0,0,0,.12); padding:6px; min-width:190px; z-index:70; }
+    .menu.open { display:block; }
+    .menu button { display:block; width:100%; text-align:left; background:#fff; color:var(--ink); font-weight:600; padding:9px 12px; border-radius:7px; }
+    .menu button:hover { background:#f4f7ff; }
+    .menu .mrow { display:flex; gap:6px; align-items:center; padding:6px 8px; }
+    .menu input[type=month] { border:1px solid var(--line); border-radius:6px; padding:5px 7px; }
+
+    /* 레이아웃: 사이드바 + 본문 */
+    .layout { max-width:1180px; margin:14px auto; padding:0 16px 90px; display:grid; grid-template-columns:230px 1fr; gap:20px; align-items:start; }
+    .sidebar { position:sticky; top:64px; align-self:start; }
+    .prog { background:#fff; border:1px solid var(--line); border-radius:10px; padding:12px 14px; margin-bottom:10px; }
+    .prog .n { font-weight:800; font-size:1.05rem; } .prog .n b { color:var(--accent); }
+    .progbar { height:7px; background:#e6eaf0; border-radius:6px; margin-top:8px; overflow:hidden; }
+    .progbar > i { display:block; height:100%; background:var(--green); border-radius:6px; transition:width .2s; }
+    .navlist { background:#fff; border:1px solid var(--line); border-radius:10px; padding:6px; }
+    .navitem { display:flex; align-items:center; gap:8px; padding:8px 10px; border-radius:8px; cursor:pointer; font-size:.9rem; }
+    .navitem:hover { background:#f4f7ff; }
+    .navitem.active { background:#eef3ff; }
+    .navitem .dot { width:16px; height:16px; border-radius:50%; flex:none; display:inline-flex; align-items:center; justify-content:center; font-size:.62rem; color:#fff; background:#c4cad3; }
+    .navitem.done .dot { background:var(--green); }
+    .navitem.dirty .dot { background:var(--amber); }
+    .navitem .nm { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .navitem .cnt { font-size:.68rem; color:var(--muted); }
+
+    /* 본문 */
+    .content { max-width:800px; }
+    .hint-top { color:var(--muted); font-size:.82rem; margin:0 2px 12px; }
     .warn { background:#fff6e6; border-left:4px solid #e0a800; padding:9px 13px; border-radius:6px; font-size:.85rem; color:#8a6d00; margin-bottom:12px; }
+    #facilities { display:flex; flex-direction:column; gap:14px; }
+    .fac { background:#fff; border:1px solid var(--line); border-radius:12px; padding:14px 16px; scroll-margin-top:70px; }
+    .fac.filled { border-color:#a9c5ff; }
+    .fac.flash { animation: flash 1.2s ease; }
+    @keyframes flash { 0%{ box-shadow:0 0 0 3px rgba(47,111,237,.35); } 100%{ box-shadow:0 0 0 0 rgba(47,111,237,0); } }
+    .fac-head { display:flex; align-items:center; gap:9px; margin-bottom:9px; }
+    .fac-name { font-weight:800; font-size:1.05rem; }
+    .fac-badge { font-size:.68rem; padding:2px 9px; border-radius:20px; background:#eef1f5; color:var(--muted); font-weight:700; }
+    .fac.filled .fac-badge { background:var(--greenbg); color:var(--green); }
+    .fac textarea { width:100%; min-height:70px; resize:none; overflow:hidden; line-height:1.55; border:1px solid var(--line); border-radius:8px; padding:10px 12px; background:#fff; }
+    .dropzone { margin-top:10px; border:1.5px dashed #c4cdd8; border-radius:10px; padding:12px; text-align:center; color:var(--muted); font-size:.84rem; cursor:pointer; background:#fafbfd; }
+    .dropzone.drag { border-color:var(--accent); background:#eef3ff; color:var(--accent); }
+    .thumbs { display:grid; grid-template-columns:repeat(auto-fill,minmax(96px,1fr)); gap:8px; margin-top:9px; }
 
-    /* 시설 그리드 (넓은 화면 2열) */
-    #facilities { display: grid; grid-template-columns: 1fr; gap: 12px; }
-    @media (min-width: 860px) { #facilities { grid-template-columns: 1fr 1fr; } }
-    .fac { background:#fff; border:1px solid var(--line); border-radius:10px; padding:12px 14px; display:flex; flex-direction:column; }
-    .fac.filled { border-color:#a9c5ff; box-shadow: inset 3px 0 0 var(--accent); }
-    .fac-head { display:flex; align-items:center; gap:8px; margin-bottom:7px; }
-    .fac-name { font-weight:700; font-size:.98rem; }
-    .fac-badge { font-size:.68rem; padding:1px 7px; border-radius:20px; background:#eef1f5; color:var(--muted); font-weight:600; }
-    .fac.filled .fac-badge { background:#e3f0e8; color:#067d3b; }
-    .fac-photobtn { margin-left:auto; font-size:.76rem; color:var(--accent); background:#eef3ff; border:1px solid #dbe6ff; border-radius:7px; padding:4px 9px; cursor:pointer; font-weight:600; }
-    .fac textarea { width:100%; min-height:56px; resize:vertical; line-height:1.5; border:1px solid var(--line); border-radius:7px; padding:8px 10px; background:#fff; }
-    .fac-photos { margin-top:9px; }
-    .thumbs { display:grid; grid-template-columns:repeat(auto-fill,minmax(90px,1fr)); gap:7px; margin-top:7px; }
+    /* 하단 없음 — 저장/다운로드는 상단바 */
+    #status { font-size:.82rem; color:var(--muted); }
+    #status.ok { color:var(--green); } #status.err { color:#b3261e; }
 
-    .card { background:#fff; border:1px solid var(--line); border-radius:10px; padding:16px; margin-top:16px; }
-    .field { display:flex; flex-direction:column; gap:5px; }
-    .field label { font-size:.8rem; color:#445; font-weight:600; }
-    .card input { border:1px solid var(--line); border-radius:7px; padding:8px 10px; background:#fff; }
-
-    .bar { position: sticky; bottom: 0; z-index: 40; background: #fff; border-top: 1px solid var(--line); box-shadow:0 -2px 8px rgba(0,0,0,.06);
-           padding: 12px 18px; display: flex; gap: 12px; align-items: center; }
-    .bar-inner { max-width:1120px; margin:0 auto; width:100%; display:flex; gap:12px; align-items:center; }
-    button { font: inherit; font-weight: 600; border: 0; border-radius: 8px; padding: 11px 20px; cursor: pointer; }
-    .primary { background: var(--accent); color: #fff; }
-    .primary:disabled { opacity: .5; cursor: default; }
-    #status { margin-right: auto; font-size: .88rem; color: var(--muted); }
-    #status.ok { color: #067d3b; } #status.err { color: #b3261e; }
+    @media (max-width: 880px) {
+      .layout { grid-template-columns:1fr; gap:12px; }
+      .sidebar { position:static; }
+      .navlist { display:flex; overflow-x:auto; gap:4px; }
+      .navitem { white-space:nowrap; }
+      .navitem .cnt { display:none; }
+      .content { max-width:100%; }
+    }
   </style>
 </head>
 <body>
@@ -71,36 +98,42 @@
 
   <div class="topbar">
     <div class="topbar-inner">
-      <div class="brand">📋 일일업무일지<small>KBS 전국 송중계소</small></div>
+      <div class="brand">📋 일일업무일지</div>
       <div class="tb-office"><label>소속국</label><select id="office"></select></div>
       <div class="tb-field"><label for="date">날짜</label><input type="date" id="date" /></div>
-      <div class="tb-field"><label for="weekday">요일</label><input type="text" id="weekday" style="width:50px" readonly /></div>
-      <div class="tb-field" style="min-width:120px"><label for="weather">날씨</label><input type="text" id="weather" placeholder="맑음" /></div>
+      <div class="tb-field"><label for="weekday">요일</label><input type="text" id="weekday" style="width:46px" readonly /></div>
+      <div class="tb-field" style="min-width:96px"><label for="weather">날씨</label><input type="text" id="weather" placeholder="맑음" /></div>
       <div class="tb-actions">
-        <button id="searchOpen">🔍 검색</button>
-        <a href="cases.html">🔧 고장사례</a>
-        <a href="help.html">📖 사용법</a>
+        <span class="saved" id="status"></span>
+        <button class="tb-btn" id="save">💾 저장</button>
+        <div class="menuwrap">
+          <button class="tb-btn" id="dlBtn">📄 다운로드 ▾</button>
+          <div class="menu" id="dlMenu">
+            <button id="download">📄 이 날 (하루치)</button>
+            <div class="mrow"><input type="month" id="month" /><button id="monthDownload" class="primary" style="padding:7px 11px">이 달 전체</button></div>
+          </div>
+        </div>
+        <button class="tb-btn" id="searchOpen">🔍 검색</button>
+        <a class="tb-btn" href="cases.html">🔧 고장사례</a>
+        <a class="tb-btn" href="help.html">📖 사용법</a>
       </div>
     </div>
   </div>
 
-  <main>
-    <div id="dateWarn" class="warn" style="display:none">⚠️ <b>오늘 날짜가 아닙니다.</b> 과거·미래 날짜에 작성 중 — 저장 시 한 번 더 확인합니다.</div>
-    <div class="hint-top">시설칸에 쓰면 <b>자동 저장</b>돼요. 사진은 각 칸의 <b>📷 사진</b> 버튼으로 추가(중간 삽입은 <code>[사진1]</code>). 빈칸은 문서에 ◎만 표시.</div>
-
-    <div id="facilities">
-      <!-- 시설별 카드(내용 + 사진) -->
-    </div>
-
-    <div class="card" style="display:flex;gap:12px;align-items:end;flex-wrap:wrap">
-      <div class="field">
-        <label for="month">📅 한 달치 다운로드</label>
-        <input type="month" id="month" />
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="prog">
+        <div class="n"><b id="progDone">0</b>/<span id="progTotal">0</span> 시설 작성</div>
+        <div class="progbar"><i id="progFill" style="width:0%"></i></div>
       </div>
-      <button id="monthDownload" style="background:#e8eefc;color:#2f6fed;font-weight:600;border:0;border-radius:8px;padding:10px 18px;cursor:pointer">이 달 전체 한글파일</button>
-      <span style="color:#8a94a3;font-size:.78rem">저장된 날들을 날짜순으로 한 파일에 모아요 (텍스트)</span>
+      <div class="navlist" id="navlist"></div>
+    </aside>
+    <div class="content">
+      <div id="dateWarn" class="warn" style="display:none">⚠️ <b>오늘 날짜가 아닙니다.</b> 과거·미래 날짜에 작성 중 — 저장 시 한 번 더 확인합니다.</div>
+      <div class="hint-top">시설칸에 쓰면 <b>자동 저장</b>돼요. 사진은 각 칸에 <b>드래그하거나 눌러서</b> 추가(중간 삽입은 <code>[사진1]</code>). 빈칸은 문서에 ◎만.</div>
+      <div id="facilities"></div>
     </div>
-  </main>
+  </div>
 
   <div id="searchModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:8000;padding:16px;overflow:auto">
     <div style="max-width:720px;margin:24px auto;background:#fff;border-radius:12px;padding:18px">
@@ -114,14 +147,6 @@
         <button class="primary" id="searchGo">검색</button>
       </div>
       <div id="searchResults" style="margin-top:14px"><div style="color:#8a94a3;font-size:.9rem;padding:8px 2px">키워드를 입력하고 검색하세요.</div></div>
-    </div>
-  </div>
-
-  <div class="bar">
-    <div class="bar-inner">
-      <span id="status"></span>
-      <button id="save" style="background:#e8eefc;color:#2f6fed">💾 저장</button>
-      <button class="primary" id="download">📄 한글 다운로드</button>
     </div>
   </div>
 
@@ -161,12 +186,10 @@
 
     const fc = document.getElementById("facilities");
 
-    // 사진 업로드 핸들러
-    async function onPhotoInput(e) {
-      const key = e.target.dataset.photo;
-      const files = [...e.target.files];
-      e.target.value = "";
+    // 사진 업로드 (파일 배열) — 파일선택·드래그앤드롭 공용
+    async function processPhotoFiles(key, files) {
       for (const f of files) {
+        if (!f.type || !f.type.startsWith("image/")) continue;
         const item = { id: ++photoSeq, file: f, caption: "", uploading: true };
         photosByKey[key].push(item);
         renderThumbs(key);
@@ -179,65 +202,102 @@
           touched.add(key); renderThumbs(key); scheduleAutoSave();
         } catch (err) {
           item.uploading = false;
-          setStatus("사진 업로드 실패: " + err.message + " (photos 버킷 만드셨나요?)", "err");
+          setStatus("사진 업로드 실패 (photos 버킷 필요)", "err");
           renderThumbs(key);
         }
       }
     }
 
-    // 시설칸 작성 상태(작성됨/빈칸 + 사진수) 갱신
-    function updateFacStatus(key) {
-      const fac = fc.querySelector(`.fac[data-fac="${CSS.escape(key)}"]`);
-      if (!fac) return;
-      const ta = fac.querySelector("textarea");
-      const nphoto = (photosByKey[key] || []).length;
-      const has = ta.value.trim().length > 0 || nphoto > 0;
-      fac.classList.toggle("filled", has);
-      fac.querySelector(".fac-badge").textContent = has ? (nphoto ? `작성·📷${nphoto}` : "작성됨") : "빈칸";
+    // 텍스트영역 자동 높이
+    function autoGrow(ta) { ta.style.height = "auto"; ta.style.height = Math.max(70, ta.scrollHeight + 2) + "px"; }
+
+    // 진행률 갱신
+    function updateProgress() {
+      const total = FACILITIES.length; let done = 0;
+      for (const [, key] of FACILITIES) {
+        const ta = fc.querySelector(`.fac[data-fac="${CSS.escape(key)}"] textarea`);
+        if ((ta && ta.value.trim()) || (photosByKey[key] || []).length) done++;
+      }
+      document.getElementById("progDone").textContent = done;
+      document.getElementById("progTotal").textContent = total;
+      document.getElementById("progFill").style.width = total ? Math.round(done / total * 100) + "%" : "0%";
     }
 
-    // 국의 시설 카드 생성 (국 바뀌면 다시 그림)
+    // 시설칸 상태(카드 뱃지 + 사이드바 + 진행률)
+    function updateFacStatus(key) {
+      const fac = fc.querySelector(`.fac[data-fac="${CSS.escape(key)}"]`);
+      const nav = document.querySelector(`.navitem[data-nav="${CSS.escape(key)}"]`);
+      const ta = fac && fac.querySelector("textarea");
+      const nphoto = (photosByKey[key] || []).length;
+      const has = (ta && ta.value.trim().length > 0) || nphoto > 0;
+      if (fac) {
+        fac.classList.toggle("filled", has);
+        fac.querySelector(".fac-badge").textContent = has ? (nphoto ? `작성·📷${nphoto}` : "작성됨") : "빈칸";
+      }
+      if (nav) {
+        nav.classList.toggle("done", has);
+        nav.classList.toggle("dirty", !has && touched.has(key));
+        nav.querySelector(".dot").textContent = has ? "✓" : "";
+        nav.querySelector(".cnt").textContent = nphoto ? `📷${nphoto}` : "";
+      }
+      updateProgress();
+    }
+
+    // 국의 시설 카드 + 사이드바 생성
     function buildFacilityCards() {
       FACILITIES = facilitiesFor(currentOffice);
       fc.innerHTML = "";
       for (const k in photosByKey) delete photosByKey[k];
+      const nav = document.getElementById("navlist");
+      nav.innerHTML = "";
       for (const [label, key] of FACILITIES) {
         photosByKey[key] = [];
         const div = document.createElement("div");
-        div.className = "fac";
-        div.dataset.fac = key;
+        div.className = "fac"; div.dataset.fac = key;
         div.innerHTML = `
-          <div class="fac-head">
-            <span class="fac-name">${label}</span>
-            <span class="fac-badge">빈칸</span>
-            <button type="button" class="fac-photobtn" data-toggle="${key}">📷 사진</button>
-          </div>
-          <textarea data-key="${key}" placeholder="업무 추진 내용…  (중간 삽입은 [사진1])"></textarea>
-          <div class="fac-photos" data-photobox="${key}" style="display:none">
-            <input type="file" accept="image/*" multiple data-photo="${key}" />
-            <div class="thumbs" data-thumbs="${key}"></div>
-          </div>`;
+          <div class="fac-head"><span class="fac-name">${label}</span><span class="fac-badge">빈칸</span></div>
+          <textarea data-key="${key}" placeholder="업무 추진 내용…  (사진 중간 삽입은 [사진1])"></textarea>
+          <div class="dropzone" data-drop="${key}">📷 사진 — 여기로 드래그하거나 클릭해서 추가</div>
+          <input type="file" accept="image/*" multiple data-photo="${key}" style="display:none" />
+          <div class="thumbs" data-thumbs="${key}"></div>`;
         fc.appendChild(div);
-      }
-      for (const inp of fc.querySelectorAll("[data-photo]")) inp.addEventListener("change", onPhotoInput);
-      for (const ta of fc.querySelectorAll("textarea[data-key]"))
-        ta.addEventListener("input", () => { touched.add(ta.dataset.key); updateFacStatus(ta.dataset.key); scheduleAutoSave(); });
-      for (const btn of fc.querySelectorAll(".fac-photobtn"))
-        btn.addEventListener("click", () => {
-          const box = fc.querySelector(`[data-photobox="${CSS.escape(btn.dataset.toggle)}"]`);
-          box.style.display = box.style.display === "none" ? "" : "none";
+        const ni = document.createElement("div");
+        ni.className = "navitem"; ni.dataset.nav = key;
+        ni.innerHTML = `<span class="dot"></span><span class="nm">${label}</span><span class="cnt"></span>`;
+        ni.addEventListener("click", () => {
+          document.querySelectorAll(".navitem").forEach((x) => x.classList.remove("active"));
+          ni.classList.add("active");
+          div.scrollIntoView({ behavior: "smooth", block: "start" });
+          div.classList.remove("flash"); void div.offsetWidth; div.classList.add("flash");
+          div.querySelector("textarea").focus({ preventScroll: true });
         });
+        nav.appendChild(ni);
+      }
+      for (const ta of fc.querySelectorAll("textarea[data-key]"))
+        ta.addEventListener("input", () => { touched.add(ta.dataset.key); autoGrow(ta); updateFacStatus(ta.dataset.key); scheduleAutoSave(); });
+      for (const inp of fc.querySelectorAll("[data-photo]"))
+        inp.addEventListener("change", (e) => { const key = e.target.dataset.photo; const files = [...e.target.files]; e.target.value = ""; processPhotoFiles(key, files); });
+      for (const dz of fc.querySelectorAll(".dropzone")) {
+        const key = dz.dataset.drop;
+        const input = fc.querySelector(`input[data-photo="${CSS.escape(key)}"]`);
+        dz.addEventListener("click", () => input.click());
+        dz.addEventListener("dragover", (e) => { e.preventDefault(); dz.classList.add("drag"); });
+        dz.addEventListener("dragleave", () => dz.classList.remove("drag"));
+        dz.addEventListener("drop", (e) => { e.preventDefault(); dz.classList.remove("drag"); processPhotoFiles(key, [...e.dataTransfer.files]); });
+      }
+      updateProgress();
     }
 
     function renderThumbs(key) {
-      const box = document.querySelector(`[data-thumbs="${key}"]`);
+      const box = document.querySelector(`[data-thumbs="${CSS.escape(key)}"]`);
+      if (!box) return;
       box.innerHTML = "";
       photosByKey[key].forEach((item, idx) => {
         const src = item.url || (item.file ? URL.createObjectURL(item.file) : "");
         const el = document.createElement("div");
         el.style.cssText = "position:relative";
         el.innerHTML = `<div style="position:relative">
-            <img src="${src}" style="width:100%;height:75px;object-fit:cover;border-radius:5px;border:1px solid #d7dbe0${item.uploading ? ";opacity:.4" : ""}" />
+            <img src="${src}" style="width:100%;height:78px;object-fit:cover;border-radius:5px;border:1px solid #d7dbe0${item.uploading ? ";opacity:.4" : ""}" />
             <span style="position:absolute;top:2px;left:2px;background:#2f6fed;color:#fff;font-size:.68rem;font-weight:700;padding:1px 6px;border-radius:4px">사진${idx + 1}</span>
             ${item.uploading ? '<span style="position:absolute;bottom:2px;left:2px;background:rgba(0,0,0,.65);color:#fff;font-size:.62rem;padding:1px 5px;border-radius:4px">올리는중…</span>' : ""}
             <button title="삭제" style="position:absolute;top:2px;right:2px;background:rgba(0,0,0,.6);color:#fff;border:0;border-radius:50%;width:20px;height:20px;cursor:pointer;font-size:.7rem;padding:0">×</button>
@@ -249,19 +309,15 @@
           if (item.path) { try { await removePhoto(item.path); } catch (err) {} }
           const i = photosByKey[key].indexOf(item);
           if (i >= 0) photosByKey[key].splice(i, 1);
-          touched.add(key);
-          renderThumbs(key);
-          scheduleAutoSave();
+          touched.add(key); renderThumbs(key); scheduleAutoSave();
         });
         box.appendChild(el);
       });
-      const pbox = fc.querySelector(`[data-photobox="${CSS.escape(key)}"]`);
-      if (pbox && photosByKey[key].length) pbox.style.display = "";
       updateFacStatus(key);
     }
 
     const status = document.getElementById("status");
-    function setStatus(msg, cls) { status.textContent = msg; status.className = cls || ""; }
+    function setStatus(msg, cls) { status.textContent = msg; status.className = "saved " + (cls || ""); }
 
     // 날짜 → 요일 자동
     const dateEl = document.getElementById("date");
@@ -331,8 +387,10 @@
         const log = await loadLog(currentOffice, dateEl.value);
         weatherEl.value = log?.weather || "";
         const c = (log && log.contents) || {};
-        for (const ta of document.querySelectorAll("textarea[data-key]"))
+        for (const ta of document.querySelectorAll("textarea[data-key]")) {
           ta.value = c[ta.dataset.key] || "";
+          autoGrow(ta);
+        }
         // 사진 복원
         const ph = (log && log.photos) || {};
         for (const [, key] of FACILITIES) {
@@ -403,6 +461,11 @@
     prevDate = dateEl.value;
     loadForDate();
     cleanupOld(6).catch(() => {}); // 6개월 지난 일지 자동 정리(조용히)
+
+    // 다운로드 메뉴 토글
+    const dlMenu = document.getElementById("dlMenu");
+    document.getElementById("dlBtn").addEventListener("click", (e) => { e.stopPropagation(); dlMenu.classList.toggle("open"); });
+    document.addEventListener("click", (e) => { if (!e.target.closest(".menuwrap")) dlMenu.classList.remove("open"); });
 
     // 수동 저장 버튼 (즉시)
     document.getElementById("save").addEventListener("click", async (e) => {
