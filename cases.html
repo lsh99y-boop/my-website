@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>장비 고장·정비 사례</title>
+  <style>
+    :root { --line:#d7dbe0; --bg:#f6f8fa; --accent:#2f6fed; --ink:#1a2230; --muted:#667; }
+    * { box-sizing: border-box; }
+    body { font-family: system-ui, "Malgun Gothic", sans-serif; margin: 0; background: var(--bg); color: var(--ink); }
+    header { background: #fff; border-bottom: 1px solid var(--line); padding: 16px 20px; display:flex; justify-content:space-between; align-items:center; gap:12px; }
+    header h1 { font-size: 1.15rem; margin: 0; }
+    header p { margin: 3px 0 0; color: var(--muted); font-size: .82rem; }
+    header a { color: var(--accent); text-decoration: none; font-weight: 600; font-size: .88rem; white-space: nowrap; border:1px solid #cfdcfb; border-radius:8px; padding:8px 12px; }
+    main { max-width: 960px; margin: 20px auto; padding: 0 16px 80px; }
+    .card { background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; margin-bottom: 16px; }
+    .card h2 { font-size: 1rem; margin: 0 0 12px; }
+    label { font-size: .8rem; color: #445; font-weight: 600; display:block; margin-bottom: 4px; }
+    input, select, textarea { font: inherit; border: 1px solid var(--line); border-radius: 7px; padding: 8px 10px; background: #fff; width: 100%; }
+    input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); border-color: var(--accent); }
+    textarea { min-height: 54px; resize: vertical; line-height: 1.5; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
+    .field { min-width: 0; }
+    button { font: inherit; font-weight: 600; border: 0; border-radius: 8px; padding: 10px 18px; cursor: pointer; }
+    .primary { background: var(--accent); color: #fff; }
+    .ghost { background: #eef1f5; color: var(--ink); }
+    .blue { background: #e8eefc; color: var(--accent); }
+    .danger { background: #fdecea; color: #b3261e; }
+    .row-btns { display:flex; gap:10px; flex-wrap:wrap; margin-top:14px; }
+    #status { font-size: .86rem; color: var(--muted); min-height: 1.2em; margin-top:8px; }
+    #status.ok { color: #067d3b; } #status.err { color: #b3261e; }
+    table { border-collapse: collapse; width: 100%; font-size: .88rem; }
+    th, td { border-bottom: 1px solid var(--line); padding: 8px 8px; text-align: left; }
+    th { color: var(--muted); font-weight: 600; font-size: .78rem; }
+    tbody tr { cursor: pointer; }
+    tbody tr:hover { background: #f4f7ff; }
+    .model { font-weight: 700; color: var(--accent); }
+    .empty { color: var(--muted); padding: 14px 4px; font-size: .9rem; }
+    .sep { border: 0; border-top: 1px dashed var(--line); margin: 14px 0; }
+  </style>
+</head>
+<body>
+  <div id="pinGate" style="position:fixed;inset:0;background:#0e1420;z-index:9999;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px;color:#e6ebf2;padding:20px;text-align:center">
+    <div style="font-size:1.3rem;font-weight:700">🔧 고장·정비 사례</div>
+    <div style="color:#8a94a3;font-size:.9rem">접속 PIN을 입력하세요</div>
+    <input id="pinInput" type="password" inputmode="numeric" maxlength="12" placeholder="PIN"
+           style="font-size:1.4rem;text-align:center;letter-spacing:.25em;padding:10px 16px;border-radius:8px;border:1px solid #2a3550;background:#182130;color:#fff;width:200px" />
+    <button id="pinOk" style="background:#2f6fed;color:#fff;border:0;border-radius:8px;padding:11px 28px;font-weight:600;cursor:pointer;font-size:1rem">확인</button>
+    <div id="pinErr" style="color:#ff6b6b;font-size:.85rem;height:1.1em"></div>
+  </div>
+
+  <header>
+    <div>
+      <h1>🔧 장비 고장·정비 사례</h1>
+      <p>KBS 전국 공용 · 모델명·증상으로 검색하고 사례를 공유</p>
+    </div>
+    <a href="index.html">📋 일일업무일지</a>
+  </header>
+
+  <main>
+    <!-- 검색 -->
+    <div class="card">
+      <h2>🔍 사례 검색</h2>
+      <div class="grid">
+        <div class="field" style="grid-column: 1 / -1">
+          <label>모델명 · 증상 · 장비 검색</label>
+          <input id="q" placeholder="예: PCU-2000, 출력저하, TX-B …" />
+        </div>
+        <div class="field"><label>소속국</label><select id="fOffice"></select></div>
+        <div class="field"><label>송신소</label><select id="fSite"></select></div>
+        <div class="field"><label>장비 종류</label><select id="fEquip"></select></div>
+      </div>
+      <div class="row-btns">
+        <button class="primary" id="searchBtn">🔍 검색</button>
+        <button class="ghost" id="resetSearch">초기화</button>
+      </div>
+    </div>
+
+    <!-- 결과 -->
+    <div class="card">
+      <h2>결과 <span id="count" style="color:var(--muted);font-weight:400;font-size:.85rem"></span></h2>
+      <div id="results"><div class="empty">검색을 눌러 사례를 찾아보세요.</div></div>
+    </div>
+
+    <!-- 등록/수정 -->
+    <div class="card">
+      <h2 id="formTitle">➕ 새 사례 등록</h2>
+      <div class="grid">
+        <div class="field"><label>소속국</label><select id="office"></select></div>
+        <div class="field"><label>송신소</label><select id="site"></select></div>
+        <div class="field"><label>장비 종류</label><select id="equip_type"></select></div>
+        <div class="field"><label>날짜</label><input type="date" id="fault_date" /></div>
+        <div class="field" style="grid-column: 1 / -1"><label>장비명 (상세)</label><input id="equipment" placeholder="예: 2TV(CH32, 1kW) TX-B" /></div>
+        <div class="field"><label>모델명 <span style="color:var(--accent)">★검색</span></label><input id="model" placeholder="예: THU9evo(R&S)" /></div>
+        <div class="field"><label>작성자</label><input id="authors" placeholder="예: 이대로,조기은" /></div>
+      </div>
+      <hr class="sep" />
+      <div class="grid">
+        <div class="field" style="grid-column: 1 / -1"><label>증상 <span style="color:var(--accent)">★검색</span></label><textarea id="symptom" placeholder="고장·이상 증상"></textarea></div>
+        <div class="field" style="grid-column: 1 / -1"><label>조치</label><textarea id="action" placeholder="조치 내용"></textarea></div>
+        <div class="field" style="grid-column: 1 / -1"><label>향후계획</label><textarea id="plan" placeholder="예: 예비 부품 확보"></textarea></div>
+        <div class="field"><label>세부 1 (제작사/가격 등)</label><input id="detail1" /></div>
+        <div class="field"><label>세부 2</label><input id="detail2" /></div>
+        <div class="field" style="grid-column: 1 / -1"><label>보고서 제목 <span style="color:var(--muted);font-weight:400">(비우면 자동 생성)</span></label><input id="title" placeholder="예: 계룡산(송) 2TV 냉각호스 누수" /></div>
+      </div>
+      <div class="row-btns">
+        <button class="primary" id="saveBtn">💾 등록</button>
+        <button class="blue" id="reportBtn">📄 장애보고서 다운로드</button>
+        <button class="ghost" id="newBtn">➕ 새로 작성</button>
+        <button class="danger" id="delBtn" style="display:none">🗑 삭제</button>
+      </div>
+      <div id="status"></div>
+    </div>
+  </main>
+
+  <script type="module">
+    import { saveCase, updateCase, deleteCase, getCase, searchCases } from "./faultCases.js";
+    import { buildFaultReport } from "./faultReport.js";
+    import { downloadBlob } from "./hwpx.js";
+    import { OFFICE_LIST, OFFICES } from "./sites.js";
+
+    // PIN
+    const APP_PIN = "7590";
+    (function () {
+      const gate = document.getElementById("pinGate");
+      if (localStorage.getItem("ilji_pin_ok") === APP_PIN) { gate.remove(); return; }
+      const inp = document.getElementById("pinInput"), err = document.getElementById("pinErr");
+      const tryPin = () => { if (inp.value === APP_PIN) { localStorage.setItem("ilji_pin_ok", APP_PIN); gate.remove(); } else { err.textContent = "PIN이 틀렸어요"; inp.value = ""; inp.focus(); } };
+      document.getElementById("pinOk").addEventListener("click", tryPin);
+      inp.addEventListener("keydown", (e) => { if (e.key === "Enter") tryPin(); });
+      inp.focus();
+    })();
+
+    const EQUIP_TYPES = ["송신기", "엑사이터", "중계기", "RackController"];
+    const $ = (id) => document.getElementById(id);
+    const status = $("status");
+    const setStatus = (m, c) => { status.textContent = m; status.className = c || ""; };
+
+    // 드롭다운 채우기
+    function fillOffices(sel, withAll) {
+      sel.innerHTML = (withAll ? `<option value="">전체</option>` : "") + OFFICE_LIST.map((o) => `<option>${o}</option>`).join("");
+    }
+    function fillSites(sel, office, withAll) {
+      const sites = OFFICES[office] || [];
+      sel.innerHTML = (withAll ? `<option value="">전체</option>` : `<option value="">(송신소 선택)</option>`) + sites.map((s) => `<option>${s}</option>`).join("");
+    }
+    function fillEquip(sel, withAll) {
+      sel.innerHTML = (withAll ? `<option value="">전체</option>` : `<option value="">(장비 선택)</option>`) + EQUIP_TYPES.map((e) => `<option>${e}</option>`).join("");
+    }
+    // 검색 필터
+    fillOffices($("fOffice"), true);
+    fillSites($("fSite"), "", true);
+    fillEquip($("fEquip"), true);
+    $("fOffice").addEventListener("change", () => fillSites($("fSite"), $("fOffice").value, true));
+    // 입력 폼
+    fillOffices($("office"), false);
+    fillSites($("site"), OFFICE_LIST[0], false);
+    fillEquip($("equip_type"), false);
+    $("office").addEventListener("change", () => fillSites($("site"), $("office").value, false));
+    $("fault_date").value = new Date().toISOString().slice(0, 10);
+
+    // ===== 검색 =====
+    async function doSearch() {
+      setStatus("검색 중…");
+      try {
+        const rows = await searchCases({ q: $("q").value, office: $("fOffice").value, site: $("fSite").value, equip_type: $("fEquip").value });
+        renderResults(rows);
+        setStatus(`검색 완료 · ${rows.length}건`, "ok");
+      } catch (e) {
+        setStatus("검색 오류: " + e.message + " (fault_cases 테이블 만드셨나요?)", "err");
+      }
+    }
+    function renderResults(rows) {
+      $("count").textContent = `(${rows.length}건)`;
+      const box = $("results");
+      if (!rows.length) { box.innerHTML = `<div class="empty">검색 결과가 없어요.</div>`; return; }
+      const esc = (s) => (s || "").replace(/</g, "&lt;");
+      box.innerHTML = `<div style="overflow-x:auto"><table><thead><tr>
+        <th>날짜</th><th>국·송신소</th><th>장비</th><th>모델명</th><th>증상</th></tr></thead><tbody>${
+        rows.map((r) => `<tr data-id="${r.id}">
+          <td style="white-space:nowrap">${esc(r.fault_date || "")}</td>
+          <td style="white-space:nowrap">${esc(r.office || "")} ${esc(r.site || "")}</td>
+          <td>${esc(r.equip_type || "")}</td>
+          <td class="model">${esc(r.model || "")}</td>
+          <td>${esc((r.symptom || "").slice(0, 30))}</td></tr>`).join("")}</tbody></table></div>`;
+      for (const tr of box.querySelectorAll("tr[data-id]"))
+        tr.addEventListener("click", () => loadIntoForm(+tr.dataset.id));
+    }
+    $("searchBtn").addEventListener("click", doSearch);
+    $("q").addEventListener("keydown", (e) => { if (e.key === "Enter") doSearch(); });
+    $("resetSearch").addEventListener("click", () => {
+      $("q").value = ""; fillOffices($("fOffice"), true); fillSites($("fSite"), "", true); fillEquip($("fEquip"), true);
+      $("results").innerHTML = `<div class="empty">검색을 눌러 사례를 찾아보세요.</div>`; $("count").textContent = "";
+    });
+
+    // ===== 폼 =====
+    let currentId = null;
+    const FORM_FIELDS = ["office", "site", "equip_type", "fault_date", "equipment", "model", "authors", "symptom", "action", "plan", "detail1", "detail2", "title"];
+    function readForm() {
+      const c = {};
+      for (const f of FORM_FIELDS) c[f] = $(f).value || null;
+      return c;
+    }
+    function writeForm(c) {
+      fillSites($("site"), c.office || OFFICE_LIST[0], false);
+      for (const f of FORM_FIELDS) $(f).value = c[f] || "";
+      if (c.office) $("office").value = c.office;
+      if (c.site) $("site").value = c.site;
+      if (c.equip_type) $("equip_type").value = c.equip_type;
+    }
+    function clearForm() {
+      currentId = null;
+      for (const f of FORM_FIELDS) $(f).value = "";
+      fillSites($("site"), OFFICE_LIST[0], false);
+      $("fault_date").value = new Date().toISOString().slice(0, 10);
+      $("formTitle").textContent = "➕ 새 사례 등록";
+      $("saveBtn").textContent = "💾 등록";
+      $("delBtn").style.display = "none";
+      setStatus("");
+    }
+    async function loadIntoForm(id) {
+      try {
+        const c = await getCase(id);
+        if (!c) return;
+        currentId = id;
+        writeForm(c);
+        $("formTitle").textContent = "✏️ 사례 수정";
+        $("saveBtn").textContent = "💾 수정 저장";
+        $("delBtn").style.display = "";
+        setStatus(`#${id} 불러옴 — 수정하거나 보고서를 받으세요.`, "ok");
+        window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
+      } catch (e) { setStatus("불러오기 오류: " + e.message, "err"); }
+    }
+    function autoTitle(c) {
+      return c.title || [c.site, c.equipment || c.equip_type, c.symptom].filter(Boolean).join(" ").slice(0, 60);
+    }
+    $("saveBtn").addEventListener("click", async (e) => {
+      const c = readForm();
+      if (!c.office || !c.site) { setStatus("소속국·송신소를 선택하세요.", "err"); return; }
+      c.title = autoTitle(c);
+      e.currentTarget.disabled = true; setStatus("저장 중…");
+      try {
+        if (currentId) { await updateCase(currentId, c); setStatus(`✅ #${currentId} 수정 완료`, "ok"); }
+        else { const saved = await saveCase(c); currentId = saved.id; $("formTitle").textContent = "✏️ 사례 수정"; $("saveBtn").textContent = "💾 수정 저장"; $("delBtn").style.display = ""; setStatus(`✅ 등록 완료 (#${saved.id})`, "ok"); }
+        doSearch();
+      } catch (err) { setStatus("저장 오류: " + err.message + " (fault_cases 테이블 필요)", "err"); }
+      finally { e.currentTarget.disabled = false; }
+    });
+    $("newBtn").addEventListener("click", clearForm);
+    $("delBtn").addEventListener("click", async () => {
+      if (!currentId) return;
+      if (!confirm("이 사례를 삭제할까요?")) return;
+      try { await deleteCase(currentId); setStatus("삭제됨", "ok"); clearForm(); doSearch(); }
+      catch (e) { setStatus("삭제 오류: " + e.message, "err"); }
+    });
+    $("reportBtn").addEventListener("click", async (e) => {
+      const c = readForm(); c.title = autoTitle(c);
+      e.currentTarget.disabled = true; setStatus("보고서 생성 중…");
+      try {
+        const d = (c.fault_date || "").replace(/-/g, ".");
+        const blob = await buildFaultReport({ ...c, fault_date: d });
+        const fname = `장애보고서_${(c.site || "")}_${(c.model || c.equip_type || "")}.hwpx`;
+        downloadBlob(blob, fname);
+        setStatus("✅ 장애보고서 다운로드 완료", "ok");
+      } catch (err) { setStatus("보고서 오류: " + err.message, "err"); }
+      finally { e.currentTarget.disabled = false; }
+    });
+
+    clearForm();
+  </script>
+</body>
+</html>
