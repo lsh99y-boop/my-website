@@ -69,9 +69,11 @@
     .progbar { height:8px; background:var(--surface-2); border-radius:6px; margin-top:9px; overflow:hidden; }
     .progbar > i { display:block; height:100%; background:var(--green); border-radius:6px; transition:width .25s; }
     .navlist { background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:7px; box-shadow:var(--shadow-sm); }
-    .navitem { display:flex; align-items:center; gap:9px; padding:9px 11px; border-radius:9px; cursor:pointer; font-size:.9rem; transition:background .12s; }
+    .nav-group { font-size:.66rem; font-weight:800; color:var(--muted); letter-spacing:.04em; padding:11px 10px 4px; }
+    .nav-group:first-child { padding-top:4px; }
+    .navitem { display:flex; align-items:center; gap:9px; padding:9px 11px; border-radius:9px; cursor:pointer; font-size:.9rem; transition:background .12s; position:relative; }
     .navitem:hover { background:var(--surface-2); }
-    .navitem.active { background:var(--accent-weak); color:var(--accent); font-weight:700; }
+    .navitem.active { background:var(--accent-weak); color:var(--accent); font-weight:800; box-shadow:inset 3px 0 0 var(--accent); }
     .navitem .dot { width:16px; height:16px; border-radius:50%; flex:none; display:inline-flex; align-items:center; justify-content:center; font-size:.62rem; color:#fff; background:var(--line-strong); }
     .navitem.done .dot { background:var(--green); }
     .navitem.dirty .dot { background:var(--amber); }
@@ -149,8 +151,9 @@
       .sidebar { display:contents; }
       .prog, .navlist, .content, .side-actions { min-width:0; }
       .prog { order:1; padding:11px 14px; }
-      .navlist { order:2; display:flex; overflow-x:auto; gap:5px; padding:6px; -webkit-overflow-scrolling:touch; }
+      .navlist { order:2; display:flex; overflow-x:auto; gap:5px; padding:6px; -webkit-overflow-scrolling:touch; align-items:center; }
       .navitem { white-space:nowrap; flex:0 0 auto; }
+      .nav-group { flex:0 0 auto; align-self:center; padding:4px 6px 4px 8px; white-space:nowrap; border-left:2px solid var(--line); }
       .navitem .cnt { display:none; }
       .content { order:3; }
       .side-actions { order:4; }
@@ -283,6 +286,8 @@
     }
     const allPhotosOf = (key) => (models[key] || []).flatMap((b) => b.photos);
     const findBlock = (key, blkId) => (models[key] || []).find((b) => b.id === blkId);
+    // 사이드바 그룹: 시설(TVR/AM+송신소) · 업무(송출기술) · 기타(민원·특기)
+    const groupOf = (key) => key === "C_song" ? "업무" : (key === "C_minwon" || key === "C_teuki") ? "기타" : "시설";
 
     // 사진 업로드 (한 항목에) — 파일선택·드래그앤드롭 공용
     async function processPhotoFiles(key, blkId, files) {
@@ -406,6 +411,7 @@
       allItem.innerHTML = `<span class="dot" style="background:var(--accent);font-size:.7rem">≡</span><span class="nm" style="font-weight:700">전체 보기</span>`;
       allItem.addEventListener("click", () => applyView("__all__"));
       nav.appendChild(allItem);
+      // 내용 카드 (문서·데이터 순서 그대로)
       for (const [label, key] of FACILITIES) {
         models[key] = [emptyBlock()];
         const div = document.createElement("div");
@@ -422,14 +428,26 @@
           const last = tas[tas.length - 1]; if (last) last.focus();
         });
         renderBlocks(key);
-        const ni = document.createElement("div");
-        ni.className = "navitem"; ni.dataset.nav = key;
-        ni.innerHTML = `<span class="dot"></span><span class="nm">${label}</span><span class="cnt"></span>`;
-        ni.addEventListener("click", () => {
-          applyView(key);
-          div.classList.remove("flash"); void div.offsetWidth; div.classList.add("flash");
-        });
-        nav.appendChild(ni);
+      }
+      // 사이드바 내비 — 그룹별(시설 · 업무 · 기타)
+      const groups = { "시설": [], "업무": [], "기타": [] };
+      for (const [label, key] of FACILITIES) groups[groupOf(key)].push([label, key]);
+      for (const gname of ["시설", "업무", "기타"]) {
+        if (!groups[gname].length) continue;
+        const hd = document.createElement("div");
+        hd.className = "nav-group"; hd.textContent = gname;
+        nav.appendChild(hd);
+        for (const [label, key] of groups[gname]) {
+          const ni = document.createElement("div");
+          ni.className = "navitem"; ni.dataset.nav = key;
+          ni.innerHTML = `<span class="dot"></span><span class="nm">${label}</span><span class="cnt"></span>`;
+          ni.addEventListener("click", () => {
+            applyView(key);
+            const d = fc.querySelector(`.fac[data-fac="${CSS.escape(key)}"]`);
+            if (d) { d.classList.remove("flash"); void d.offsetWidth; d.classList.add("flash"); }
+          });
+          nav.appendChild(ni);
+        }
       }
       updateProgress();
       if (FACILITIES.length) applyView(FACILITIES[0][1]); // 기본: 첫 시설만
