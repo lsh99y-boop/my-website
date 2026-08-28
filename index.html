@@ -243,6 +243,18 @@
       updateProgress();
     }
 
+    // 보기 전환: 특정 시설만 표시 / 전체
+    function applyView(key) {
+      const all = key === "__all__";
+      for (const f of fc.querySelectorAll(".fac")) f.style.display = (all || f.dataset.fac === key) ? "" : "none";
+      document.querySelectorAll(".navitem").forEach((x) => x.classList.toggle("active", x.dataset.nav === key));
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      if (!all) {
+        const div = fc.querySelector(`.fac[data-fac="${CSS.escape(key)}"]`);
+        if (div) { const ta = div.querySelector("textarea"); if (ta) { autoGrow(ta); ta.focus({ preventScroll: true }); } }
+      }
+    }
+
     // 국의 시설 카드 + 사이드바 생성
     function buildFacilityCards() {
       FACILITIES = facilitiesFor(currentOffice);
@@ -250,6 +262,12 @@
       for (const k in photosByKey) delete photosByKey[k];
       const nav = document.getElementById("navlist");
       nav.innerHTML = "";
+      // 전체 보기
+      const allItem = document.createElement("div");
+      allItem.className = "navitem"; allItem.dataset.nav = "__all__";
+      allItem.innerHTML = `<span class="dot" style="background:var(--accent);font-size:.7rem">≡</span><span class="nm" style="font-weight:700">전체 보기</span>`;
+      allItem.addEventListener("click", () => applyView("__all__"));
+      nav.appendChild(allItem);
       for (const [label, key] of FACILITIES) {
         photosByKey[key] = [];
         const div = document.createElement("div");
@@ -265,11 +283,8 @@
         ni.className = "navitem"; ni.dataset.nav = key;
         ni.innerHTML = `<span class="dot"></span><span class="nm">${label}</span><span class="cnt"></span>`;
         ni.addEventListener("click", () => {
-          document.querySelectorAll(".navitem").forEach((x) => x.classList.remove("active"));
-          ni.classList.add("active");
-          div.scrollIntoView({ behavior: "smooth", block: "start" });
+          applyView(key);
           div.classList.remove("flash"); void div.offsetWidth; div.classList.add("flash");
-          div.querySelector("textarea").focus({ preventScroll: true });
         });
         nav.appendChild(ni);
       }
@@ -286,6 +301,7 @@
         dz.addEventListener("drop", (e) => { e.preventDefault(); dz.classList.remove("drag"); processPhotoFiles(key, [...e.dataTransfer.files]); });
       }
       updateProgress();
+      if (FACILITIES.length) applyView(FACILITIES[0][1]); // 기본: 첫 시설만
     }
 
     function renderThumbs(key) {
