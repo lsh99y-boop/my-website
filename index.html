@@ -196,7 +196,7 @@
   <div class="layout">
     <aside class="sidebar">
       <div class="prog">
-        <div class="n"><b id="progDone">0</b>/<span id="progTotal">0</span> 시설 작성</div>
+        <div class="n">작성 현황 <b id="progDone">0</b>/<span id="progTotal">0</span></div>
         <div class="progbar"><i id="progFill" style="width:0%"></i></div>
       </div>
       <div class="navlist" id="navlist"></div>
@@ -422,7 +422,7 @@
         const div = document.createElement("div");
         div.className = "fac"; div.dataset.fac = key;
         div.innerHTML = `
-          <div class="fac-head"><span class="fac-name">${label}</span><span class="fac-badge">빈칸</span><button type="button" class="fac-import" title="이 시설의 전일 작성 내용 가져오기(사진 제외)">📋 전일업무가져오기</button></div>
+          <div class="fac-head"><span class="fac-name">${label}</span><span class="fac-badge">빈칸</span><button type="button" class="fac-import" title="이 시설의 전일 작성 내용 가져오기(사진 제외)">📋 전일 업무 가져오기</button></div>
           <div class="blocks" data-blocks="${key}"></div>
           <button type="button" class="addblk" data-add="${key}">＋ 항목 추가</button>`;
         fc.appendChild(div);
