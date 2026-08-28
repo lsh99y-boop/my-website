@@ -68,7 +68,7 @@
         </div>
         <div class="field"><label>소속국</label><select id="fOffice"></select></div>
         <div class="field"><label>송신소</label><select id="fSite"></select></div>
-        <div class="field"><label>장비 종류</label><select id="fEquip"></select></div>
+        <div class="field"><label>장비 종류</label><input id="fEquip" list="equipList" placeholder="예: 송신기 (자유입력)" /></div>
       </div>
       <div class="row-btns">
         <button class="primary" id="searchBtn">🔍 검색</button>
@@ -88,8 +88,9 @@
       <div class="grid">
         <div class="field"><label>소속국</label><select id="office"></select></div>
         <div class="field"><label>송신소</label><select id="site"></select></div>
-        <div class="field"><label>장비 종류</label><select id="equip_type"></select></div>
+        <div class="field"><label>장비 종류</label><input id="equip_type" list="equipList" placeholder="예: 송신기 (자유입력)" /></div>
         <div class="field"><label>날짜</label><input type="date" id="fault_date" /></div>
+        <div class="field" style="grid-column: 1 / -1"><label>부서 (머리글) <span style="color:var(--muted);font-weight:400">· 국 선택 시 자동, 수정 가능</span></label><input id="dept" placeholder="예: 대전방송총국 기술국" /></div>
         <div class="field" style="grid-column: 1 / -1"><label>장비명 (상세)</label><input id="equipment" placeholder="예: 2TV(CH32, 1kW) TX-B" /></div>
         <div class="field"><label>모델명 <span style="color:var(--accent)">★검색</span></label><input id="model" placeholder="예: THU9evo(R&S)" /></div>
         <div class="field"><label>작성자</label><input id="authors" placeholder="예: 이대로,조기은" /></div>
@@ -111,6 +112,8 @@
       </div>
       <div id="status"></div>
     </div>
+
+    <datalist id="equipList"></datalist>
   </main>
 
   <script type="module">
@@ -144,19 +147,21 @@
       const sites = OFFICES[office] || [];
       sel.innerHTML = (withAll ? `<option value="">전체</option>` : `<option value="">(송신소 선택)</option>`) + sites.map((s) => `<option>${s}</option>`).join("");
     }
-    function fillEquip(sel, withAll) {
-      sel.innerHTML = (withAll ? `<option value="">전체</option>` : `<option value="">(장비 선택)</option>`) + EQUIP_TYPES.map((e) => `<option>${e}</option>`).join("");
-    }
+    // 장비 종류 추천 목록(자유 입력)
+    document.getElementById("equipList").innerHTML = EQUIP_TYPES.map((e) => `<option value="${e}">`).join("");
     // 검색 필터
     fillOffices($("fOffice"), true);
     fillSites($("fSite"), "", true);
-    fillEquip($("fEquip"), true);
     $("fOffice").addEventListener("change", () => fillSites($("fSite"), $("fOffice").value, true));
     // 입력 폼
     fillOffices($("office"), false);
     fillSites($("site"), OFFICE_LIST[0], false);
-    fillEquip($("equip_type"), false);
-    $("office").addEventListener("change", () => fillSites($("site"), $("office").value, false));
+    const deptDefault = (o) => (o === "본사" ? "본사 기술국" : `${o}방송총국 기술국`);
+    function maybeUpdateDept() {
+      const d = $("dept").value.trim();
+      if (!d || /방송총국 기술국$/.test(d) || d === "본사 기술국") $("dept").value = deptDefault($("office").value);
+    }
+    $("office").addEventListener("change", () => { fillSites($("site"), $("office").value, false); maybeUpdateDept(); });
     $("fault_date").value = new Date().toISOString().slice(0, 10);
 
     // ===== 검색 =====
@@ -189,13 +194,13 @@
     $("searchBtn").addEventListener("click", doSearch);
     $("q").addEventListener("keydown", (e) => { if (e.key === "Enter") doSearch(); });
     $("resetSearch").addEventListener("click", () => {
-      $("q").value = ""; fillOffices($("fOffice"), true); fillSites($("fSite"), "", true); fillEquip($("fEquip"), true);
+      $("q").value = ""; fillOffices($("fOffice"), true); fillSites($("fSite"), "", true); $("fEquip").value = "";
       $("results").innerHTML = `<div class="empty">검색을 눌러 사례를 찾아보세요.</div>`; $("count").textContent = "";
     });
 
     // ===== 폼 =====
     let currentId = null;
-    const FORM_FIELDS = ["office", "site", "equip_type", "fault_date", "equipment", "model", "authors", "symptom", "action", "plan", "detail1", "detail2", "title"];
+    const FORM_FIELDS = ["office", "dept", "site", "equip_type", "fault_date", "equipment", "model", "authors", "symptom", "action", "plan", "detail1", "detail2", "title"];
     function readForm() {
       const c = {};
       for (const f of FORM_FIELDS) c[f] = $(f).value || null;
@@ -207,11 +212,14 @@
       if (c.office) $("office").value = c.office;
       if (c.site) $("site").value = c.site;
       if (c.equip_type) $("equip_type").value = c.equip_type;
+      if (!$("dept").value.trim()) $("dept").value = deptDefault($("office").value);
     }
     function clearForm() {
       currentId = null;
       for (const f of FORM_FIELDS) $(f).value = "";
+      $("office").value = OFFICE_LIST[0];
       fillSites($("site"), OFFICE_LIST[0], false);
+      $("dept").value = deptDefault($("office").value);
       $("fault_date").value = new Date().toISOString().slice(0, 10);
       $("formTitle").textContent = "➕ 새 사례 등록";
       $("saveBtn").textContent = "💾 등록";

@@ -17,3 +17,9 @@ template/_*.pdf
 template/*.pdf
 template/*.png
 template/_*.png
+
+# 장애보고서 양식 작업 중간물
+fault-template/ex/
+fault-template/_*.hwpx
+fault-template/_*.pdf
+fault-template/_*.png

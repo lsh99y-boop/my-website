@@ -16,7 +16,11 @@ export async function buildFaultReport(c) {
   let sec = await zip.file("Contents/section0.xml").async("string");
 
   const header = [c.authors, c.fault_date].filter(Boolean).join("        ");
+  const dept = c.dept || `${c.office || ""}방송총국 기술국`;
+  const chong = dept.replace(/\s*기술국\s*$/, "");
   const map = {
+    "부서": dept,
+    "총국": chong,
     "제목": c.title || "",
     "머리글": header,
     "대상시설": c.site || "",

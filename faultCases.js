@@ -29,7 +29,7 @@ export async function searchCases({ q, office, site, equip_type } = {}) {
   let query = supabase.from("fault_cases").select("*").order("fault_date", { ascending: false }).limit(200);
   if (office) query = query.eq("office", office);
   if (site) query = query.eq("site", site);
-  if (equip_type) query = query.eq("equip_type", equip_type);
+  if (equip_type) query = query.ilike("equip_type", `%${equip_type}%`);
   if (q && q.trim()) {
     const kw = q.trim().replace(/[%,]/g, " ");
     query = query.or(`model.ilike.%${kw}%,symptom.ilike.%${kw}%,equipment.ilike.%${kw}%`);

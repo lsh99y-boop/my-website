@@ -6,6 +6,7 @@
 create table if not exists public.fault_cases (
   id         bigint generated always as identity primary key,
   office     text,          -- 소속국
+  dept       text,          -- 부서(머리글: OO방송총국 기술국)
   site       text,          -- 송신소
   equip_type text,          -- 장비 종류(송신기/엑사이터/중계기/RackController)
   equipment  text,          -- 장비명 상세
