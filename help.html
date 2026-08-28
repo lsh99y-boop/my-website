@@ -4,86 +4,139 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>일일업무일지 사용법</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+  <script>try{var t=localStorage.getItem("ilji_theme");if(t)document.documentElement.setAttribute("data-theme",t);}catch(e){}</script>
   <style>
-    :root { --line:#d7dbe0; --bg:#f6f8fa; --accent:#2f6fed; --ink:#1a2230; --muted:#667; }
+    :root {
+      --bg:#f4f5f8; --surface:#ffffff; --surface-2:#f5f6f9; --line:#e7e9ef; --line-strong:#d8dbe3;
+      --ink:#1b1f2a; --muted:#6b7280;
+      --accent:#4f46e5; --accent-ink:#ffffff; --accent-weak:#eef0fe; --accent-border:#dadcfb;
+      --amber:#c77905; --amberbg:#fdf0d9;
+      --shadow-sm:0 1px 2px rgba(16,24,40,.05);
+      --radius:14px;
+    }
+    @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+      --bg:#0e131c; --surface:#161c28; --surface-2:#1e2532; --line:#2a3342; --line-strong:#3a4455;
+      --ink:#e6e9f0; --muted:#96a1b4;
+      --accent:#818cf8; --accent-ink:#0e131c; --accent-weak:#232b45; --accent-border:#3a4468;
+      --amber:#fbbf24; --amberbg:#3a2c10;
+      --shadow-sm:0 1px 2px rgba(0,0,0,.4);
+    } }
+    :root[data-theme="dark"] {
+      --bg:#0e131c; --surface:#161c28; --surface-2:#1e2532; --line:#2a3342; --line-strong:#3a4455;
+      --ink:#e6e9f0; --muted:#96a1b4;
+      --accent:#818cf8; --accent-ink:#0e131c; --accent-weak:#232b45; --accent-border:#3a4468;
+      --amber:#fbbf24; --amberbg:#3a2c10;
+      --shadow-sm:0 1px 2px rgba(0,0,0,.4);
+    }
     * { box-sizing: border-box; }
-    body { font-family: system-ui, "Malgun Gothic", sans-serif; margin: 0; background: var(--bg); color: var(--ink); line-height: 1.65; }
-    header { background: #fff; border-bottom: 1px solid var(--line); padding: 18px 20px; position: sticky; top: 0; z-index: 5; }
-    header h1 { font-size: 1.2rem; margin: 0; }
-    header a { color: var(--accent); text-decoration: none; font-size: .88rem; font-weight: 600; }
-    main { max-width: 820px; margin: 22px auto; padding: 0 16px 80px; }
-    .card { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 20px 22px; margin-bottom: 18px; }
-    h2 { font-size: 1.1rem; margin: 0 0 12px; display: flex; align-items: center; gap: 8px; }
-    h2 .n { background: var(--accent); color: #fff; width: 26px; height: 26px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: .85rem; flex: none; }
-    h3 { font-size: .96rem; margin: 16px 0 6px; }
-    ol, ul { margin: 6px 0 6px; padding-left: 22px; }
-    li { margin: 4px 0; }
-    code, .kbd { background: #eef1f5; padding: 1px 7px; border-radius: 5px; font-size: .9em; font-family: ui-monospace, monospace; }
-    .pin { font-size: 1.1rem; font-weight: 700; color: var(--accent); }
-    .tip { background: #eef5ff; border-left: 4px solid var(--accent); padding: 10px 14px; border-radius: 6px; margin: 12px 0; font-size: .92rem; }
-    .warn { background: #fff6e6; border-left: 4px solid #e0a800; padding: 10px 14px; border-radius: 6px; margin: 12px 0; font-size: .92rem; }
-    .ex { background: #f2f4f7; border-radius: 8px; padding: 12px 14px; font-family: ui-monospace, monospace; font-size: .88rem; white-space: pre-wrap; margin: 8px 0; }
-    .toc { display: flex; flex-wrap: wrap; gap: 8px; }
-    .toc a { background: #eef1f5; color: var(--ink); text-decoration: none; padding: 6px 12px; border-radius: 20px; font-size: .85rem; }
-    .toc a:hover { background: #dbe3ee; }
-    table { border-collapse: collapse; width: 100%; margin: 8px 0; font-size: .9rem; }
-    th, td { border: 1px solid var(--line); padding: 7px 10px; text-align: left; }
-    th { background: #f2f4f7; }
-    .muted { color: var(--muted); font-size: .88rem; }
+    body { font-family:"Pretendard Variable",Pretendard,system-ui,"Malgun Gothic",sans-serif; margin:0; background:var(--bg); color:var(--ink); line-height:1.65; -webkit-font-smoothing:antialiased; }
+    header { background:var(--surface); border-bottom:1px solid var(--line); padding:14px 20px; position:sticky; top:0; z-index:5; display:flex; align-items:center; gap:12px; box-shadow:var(--shadow-sm); }
+    header h1 { font-size:1.15rem; margin:0; letter-spacing:-.01em; }
+    header .sp { margin-left:auto; display:flex; gap:8px; align-items:center; }
+    header a, .tb-btn { color:var(--accent); background:var(--surface); text-decoration:none; font-size:.84rem; font-weight:600; border:1px solid var(--accent-border); border-radius:9px; padding:7px 11px; cursor:pointer; }
+    header a:hover, .tb-btn:hover { background:var(--accent-weak); }
+    .icon-btn { padding:7px 9px; font-size:1rem; line-height:1; }
+    main { max-width:820px; margin:22px auto; padding:0 16px 80px; }
+    .card { background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:20px 22px; margin-bottom:18px; box-shadow:var(--shadow-sm); }
+    h2 { font-size:1.12rem; margin:0 0 12px; display:flex; align-items:center; gap:9px; letter-spacing:-.01em; }
+    h2 .n { background:var(--accent); color:var(--accent-ink); width:27px; height:27px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; font-size:.85rem; flex:none; font-weight:700; }
+    h3 { font-size:.97rem; margin:16px 0 6px; }
+    ol, ul { margin:6px 0; padding-left:22px; }
+    li { margin:5px 0; }
+    code, .kbd { background:var(--surface-2); border:1px solid var(--line); padding:1px 7px; border-radius:5px; font-size:.9em; font-family:ui-monospace, monospace; }
+    .pin { font-size:1.1rem; font-weight:700; color:var(--accent); }
+    .tip { background:var(--accent-weak); border-left:4px solid var(--accent); padding:10px 14px; border-radius:8px; margin:12px 0; font-size:.92rem; }
+    .warn { background:var(--amberbg); border-left:4px solid var(--amber); padding:10px 14px; border-radius:8px; margin:12px 0; font-size:.92rem; color:var(--amber); }
+    .ex { background:var(--surface-2); border:1px solid var(--line); border-radius:8px; padding:12px 14px; font-family:ui-monospace, monospace; font-size:.88rem; white-space:pre-wrap; margin:8px 0; }
+    .toc { display:flex; flex-wrap:wrap; gap:8px; }
+    .toc a { background:var(--surface-2); color:var(--ink); border:1px solid var(--line); text-decoration:none; padding:6px 12px; border-radius:20px; font-size:.85rem; font-weight:600; }
+    .toc a:hover { background:var(--accent-weak); border-color:var(--accent-border); color:var(--accent); }
+    table { border-collapse:collapse; width:100%; margin:8px 0; font-size:.9rem; }
+    th, td { border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; }
+    th { background:var(--surface-2); }
+    .muted { color:var(--muted); font-size:.88rem; }
+    .chip { display:inline-block; background:var(--surface-2); border:1px solid var(--line); border-radius:6px; padding:1px 7px; font-size:.86rem; font-weight:600; }
   </style>
 </head>
 <body>
   <header>
     <h1>📖 일일업무일지 사용법</h1>
-    <a href="index.html">← 작성 화면으로</a>
+    <div class="sp">
+      <a href="index.html">← 작성 화면</a>
+      <button class="tb-btn icon-btn" id="themeToggle" title="라이트/다크 전환">🌙</button>
+    </div>
   </header>
 
   <main>
     <div class="card">
       <div class="toc">
-        <a href="#start">① 접속</a>
-        <a href="#write">② 일지 작성</a>
-        <a href="#photo">③ 사진 넣기</a>
-        <a href="#save">④ 저장</a>
-        <a href="#download">⑤ 다운로드</a>
-        <a href="#note">⑥ 주의사항</a>
-        <a href="#trouble">⑦ 문제 해결</a>
+        <a href="#start">① 접속·소속국</a>
+        <a href="#screen">② 화면 구성</a>
+        <a href="#write">③ 일지 작성</a>
+        <a href="#photo">④ 사진 넣기</a>
+        <a href="#save">⑤ 저장</a>
+        <a href="#download">⑥ 다운로드</a>
+        <a href="#fault">⑦ 정비사례</a>
+        <a href="#note">⑧ 주의사항</a>
+        <a href="#trouble">⑨ 문제 해결</a>
       </div>
     </div>
 
     <div class="card" id="start">
-      <h2><span class="n">1</span> 접속하기</h2>
+      <h2><span class="n">1</span> 접속 · 소속국 선택</h2>
       <ol>
-        <li>브라우저에서 앱 주소를 엽니다.</li>
-        <li>처음 열면 <b>PIN 입력 화면</b>이 나옵니다 → 팀 공용 PIN <span class="pin">7590</span> 입력.</li>
-        <li>한 번 입력하면 <b>그 PC에서는 다음부터 자동 통과</b>됩니다.</li>
+        <li>브라우저(휴대폰·PC 모두 가능)에서 앱 주소를 엽니다.</li>
+        <li>처음 열면 <b>PIN 입력 화면</b> → 팀 공용 PIN <span class="pin">7590</span> 입력. 한 번 입력하면 <b>그 기기에서는 다음부터 자동 통과</b>됩니다.</li>
+        <li>상단바 왼쪽 <span class="chip">소속국</span>에서 <b>본인 국</b>을 고릅니다 (본사·부산·울산·창원·진주·대구·안동·포항·광주·목포·순천·전주·대전·청주·충주·춘천·강릉·원주·제주).</li>
+        <li>국을 고르면 <b>그 국의 송신소로 시설칸이 자동으로 바뀝니다.</b> (예: 대전 → 계룡산·식장산·흑성산·원효봉)</li>
       </ol>
-      <div class="tip">💡 자주 쓰는 PC라면 <b>즐겨찾기</b>에 등록해 두세요.</div>
+      <div class="tip">💡 자주 쓰면 <b>즐겨찾기</b>에 등록하세요. 선택한 소속국은 기기에 기억됩니다.</div>
+    </div>
+
+    <div class="card" id="screen">
+      <h2><span class="n">2</span> 화면 구성</h2>
+      <h3>왼쪽 사이드바</h3>
+      <ul>
+        <li><b>진행률</b>(예: 3/8 시설 작성)과 시설 목록이 보입니다. 작성한 칸은 <b>초록 점</b>, 작성 중은 주황 점.</li>
+        <li>시설 이름을 <b>클릭하면 그 시설칸만 크게</b> 나타납니다 → 집중해서 작성.</li>
+        <li>맨 위 <span class="chip">≡ 전체 보기</span>를 누르면 <b>모든 시설칸을 한 번에</b> 볼 수 있어요 (검토·다운로드 전 확인용).</li>
+      </ul>
+      <h3>사이드바 아래 — 저장 · 다운로드</h3>
+      <ul>
+        <li><b>💾 저장</b> 버튼과 <b>📄 한글 다운로드</b>(이 날 하루 / 한달)가 사이드바 <b>맨 아래</b>에 있습니다.</li>
+      </ul>
+      <h3>상단바 오른쪽</h3>
+      <ul>
+        <li><span class="chip">🔍 검색</span> 지난 일지 검색 · <span class="chip">🔧 정비사례입력</span> 고장·정비 사례 · <span class="chip">📖 사용법</span> · <span class="chip">🌙</span> 밝게/어둡게.</li>
+      </ul>
+      <div class="tip">🌙 <b>다크 모드</b>: 상단바의 🌙(밝을 때) / ☀️(어두울 때)를 누르면 화면이 어둡게/밝게 바뀝니다. 선택은 기기에 기억돼요.</div>
+      <p class="muted">📱 휴대폰에서는 위에서 아래로 <b>진행률 → 시설 목록(좌우로 넘김) → 작성칸 → 저장·다운로드</b> 순서로 보입니다.</p>
     </div>
 
     <div class="card" id="write">
-      <h2><span class="n">2</span> 일지 작성</h2>
-      <h3>날짜·날씨</h3>
+      <h2><span class="n">3</span> 일지 작성</h2>
+      <h3>날짜 · 날씨</h3>
       <ul>
         <li><b>날짜</b>를 선택하면 <b>요일이 자동</b>으로 채워집니다.</li>
         <li><b>날씨</b>는 직접 입력 (예: 맑음, 흐림, 비).</li>
       </ul>
       <h3>시설별 내용</h3>
       <ul>
-        <li>송출기술 · TVR/AM · 계룡산 · 식장산 · 흑성산 · 원효봉 · 민원사항 · 특기사항 칸에 각각 입력합니다.</li>
+        <li>공통 칸(<b>송출기술 · TVR/AM</b>) + <b>소속국 송신소</b> 칸 + 공통 칸(<b>민원사항 · 특기사항</b>)에 각각 입력합니다.</li>
         <li><b>여러 줄</b> 입력 가능 (Enter로 줄바꿈).</li>
         <li>내용을 안 적은 칸은 문서에 <b>◎</b> 표시만 나옵니다.</li>
       </ul>
-      <div class="ex">◎ 대덕(송) 주간정비 실시
+      <div class="ex">◎ 계룡산(송) 주간정비 실시
 1. 송신기#2 더미로드 시험 양호
 2. STL 점검 정상</div>
     </div>
 
     <div class="card" id="photo">
-      <h2><span class="n">3</span> 사진 넣기</h2>
+      <h2><span class="n">4</span> 사진 넣기</h2>
       <h3>올리기</h3>
       <ol>
-        <li>각 시설칸의 <b>📷 사진 → 파일 선택</b>으로 사진을 올립니다 (여러 장 가능).</li>
+        <li>각 시설칸의 <b>📷 사진 영역에 드래그</b>하거나 <b>눌러서</b> 사진을 올립니다 (여러 장 가능).</li>
         <li>올리면 자동으로 <b>용량이 압축</b>되고 <b>사진1, 사진2…</b> 번호가 붙습니다.</li>
         <li>썸네일 아래 <b>"사진 설명"</b> 칸에 설명을 적으면 문서에서 사진 밑에 들어갑니다.</li>
       </ol>
@@ -101,53 +154,84 @@
     </div>
 
     <div class="card" id="save">
-      <h2><span class="n">4</span> 저장</h2>
+      <h2><span class="n">5</span> 저장</h2>
       <ul>
-        <li>입력하면 <b>1.5초 뒤 자동 저장</b>됩니다 (화면 아래 "💾 자동 저장됨" 표시).</li>
-        <li>따로 저장 버튼을 안 눌러도 <b>내용이 사라지지 않아요.</b></li>
-        <li>저장된 내용은 <b>다른 PC(집·사무실)에서도</b> 같은 날짜를 열면 이어서 볼 수 있어요.</li>
+        <li>입력하면 <b>1.5초 뒤 자동 저장</b>됩니다 (사이드바 저장 버튼 아래 "💾 자동 저장됨" 표시).</li>
+        <li>따로 저장 버튼을 안 눌러도 <b>내용이 사라지지 않아요.</b> 즉시 저장하려면 <b>💾 저장</b> 버튼.</li>
+        <li>저장된 내용은 <b>다른 기기(집·사무실·휴대폰)에서도</b> 같은 소속국·날짜를 열면 이어서 볼 수 있어요.</li>
         <li>날짜를 바꾸면 그 날짜 내용으로 화면이 바뀌고, 이전 내용은 저장됩니다.</li>
-        <li>⚠️ <b>오늘이 아닌 날짜</b>(과거·미래)에 저장할 때는 <b>"이 날짜가 맞습니까?"</b> 확인창이 떠요. 실수로 다른 날짜에 쓰는 것을 막기 위해서예요. (날짜 위에 노란 경고도 표시됨)</li>
+        <li>⚠️ <b>오늘이 아닌 날짜</b>(과거·미래)에 작성 중이면 날짜 위에 <b>노란 경고</b>가 표시됩니다 — 실수 방지용.</li>
       </ul>
     </div>
 
     <div class="card" id="download">
-      <h2><span class="n">5</span> 한글파일 다운로드</h2>
+      <h2><span class="n">6</span> 한글파일 다운로드</h2>
+      <p class="muted">사이드바 맨 아래 <b>📄 한글 다운로드</b>에서:</p>
       <table>
         <tr><th>구분</th><th>방법</th><th>결과</th></tr>
-        <tr><td><b>하루치</b></td><td>아래 <b>"한글파일 다운로드"</b> 버튼</td><td>그날 일지 1장 (사진 포함)</td></tr>
-        <tr><td><b>한 달치</b></td><td>맨 아래 <b>📅 한 달치 다운로드</b> → 월 선택 → 버튼</td><td>그 달 저장분 전체가 한 파일에</td></tr>
+        <tr><td><b>하루</b></td><td><b>이 날 하루</b> 버튼</td><td>그날 일지 1장 (사진 포함)</td></tr>
+        <tr><td><b>한달</b></td><td>월 선택 후 <b>한달</b> 버튼</td><td>그 달 저장분 전체가 한 파일에</td></tr>
       </table>
       <ul>
         <li>다운로드한 <b>.hwpx 파일은 한글에서 바로 열립니다.</b></li>
-        <li>한글에서 열어 필요하면 "다른 이름으로 저장 → .hwp"로 저장하세요.</li>
+        <li>필요하면 한글에서 "다른 이름으로 저장 → .hwp"로 저장하세요.</li>
       </ul>
     </div>
 
+    <div class="card" id="fault">
+      <h2><span class="n">7</span> 고장 · 정비 사례</h2>
+      <ul>
+        <li>상단바 <span class="chip">🔧 정비사례입력</span>을 누르면 <b>전국 공용 고장·정비 사례</b> 페이지로 이동합니다.</li>
+        <li>고장난 장비의 <b>모델명 · 증상 · 조치</b>를 등록해 두면, 다른 국에서도 <b>검색</b>해서 참고할 수 있어요 (전국 지식 공유).</li>
+        <li>등록한 사례는 <b>표준 장애보고서(.hwpx)</b>로 사진과 함께 다운로드됩니다.</li>
+      </ul>
+      <div class="tip">💡 반복되는 고장·해결법을 남겨두면 팀 전체가 시간을 아낍니다.</div>
+    </div>
+
     <div class="card" id="note">
-      <h2><span class="n">6</span> 꼭 알아둘 점</h2>
+      <h2><span class="n">8</span> 꼭 알아둘 점</h2>
       <ul>
         <li>✅ <b>각자 자기 담당 시설만</b> 작성하면 됩니다. 여러 명이 같은 날짜를 동시에 써도 <b>자기가 쓴 칸만 저장</b>되어 서로 덮어쓰지 않아요.</li>
-        <li>💡 다른 담당자가 방금 저장한 내용을 화면에서 보려면 <b>새로고침</b>하세요. (저장은 항상 안전하게 병합되지만, 화면은 열었을 때 기준으로 보입니다)</li>
+        <li>💡 다른 담당자가 방금 저장한 내용을 화면에서 보려면 <b>새로고침</b>하세요.</li>
         <li>⚠️ 단, <b>같은 시설칸</b>을 두 명이 동시에 고치면 나중에 저장한 사람 것으로 남아요. 담당이 겹치는 칸은 조율하세요.</li>
         <li>🗑️ <b>6개월 지난 일지는 자동으로 삭제</b>됩니다. 보관이 필요하면 <b>한글파일로 다운로드</b>해서 공유폴더 등에 저장하세요. (다운로드한 파일이 영구 보관본)</li>
       </ul>
     </div>
 
     <div class="card" id="trouble">
-      <h2><span class="n">7</span> 문제 해결</h2>
+      <h2><span class="n">9</span> 문제 해결</h2>
       <h3>화면이 이상하거나 예전 버전이 보여요</h3>
-      <p><b>강력 새로고침</b>: <span class="kbd">Ctrl</span> + <span class="kbd">Shift</span> + <span class="kbd">R</span></p>
+      <p><b>강력 새로고침</b>: <span class="kbd">Ctrl</span> + <span class="kbd">Shift</span> + <span class="kbd">R</span> (휴대폰은 주소를 다시 입력하거나 앱 방문 기록 새로고침).</p>
       <h3>페이지가 아예 안 열려요</h3>
       <p>회사 내부망이 막았을 수 있어요. <b>휴대폰 데이터(핫스팟)</b>로 접속되면 회사망 차단입니다 → 전산 담당에게 문의.</p>
       <h3>사진이 안 올라가요 / "올리는중…"에서 멈춰요</h3>
       <p>사진 저장소 설정 문제일 수 있어요. 관리자에게 알려주세요.</p>
       <h3>저장이 안 돼요 (오류 메시지)</h3>
-      <p>화면 아래 빨간 오류 메시지를 캡처해서 관리자에게 전달해 주세요.</p>
-      <div class="tip">관리자 문의 시, 화면 아래 <b>상태 메시지</b>나 오류 내용을 함께 알려주시면 빠르게 해결됩니다.</div>
+      <p>화면의 빨간 오류 메시지를 캡처해서 관리자에게 전달해 주세요.</p>
+      <div class="tip">관리자 문의 시, <b>상태 메시지</b>나 오류 내용을 함께 알려주시면 빠르게 해결됩니다.</div>
     </div>
 
-    <p class="muted" style="text-align:center">대전 정비팀 · 일일업무일지 작성 도우미</p>
+    <p class="muted" style="text-align:center">KBS 전국 송중계소 · 일일업무일지 작성 도우미</p>
   </main>
+
+  <script>
+    (function () {
+      var btn = document.getElementById("themeToggle");
+      function paint(t) {
+        var root = document.documentElement;
+        if (t) root.setAttribute("data-theme", t); else root.removeAttribute("data-theme");
+        var dark = t ? t === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+        btn.textContent = dark ? "☀️" : "🌙";
+      }
+      paint(localStorage.getItem("ilji_theme"));
+      btn.addEventListener("click", function () {
+        var root = document.documentElement;
+        var cur = root.getAttribute("data-theme") || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+        var next = cur === "dark" ? "light" : "dark";
+        localStorage.setItem("ilji_theme", next);
+        paint(next);
+      });
+    })();
+  </script>
 </body>
 </html>
