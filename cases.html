@@ -78,8 +78,8 @@
 
     <!-- 결과 -->
     <div class="card">
-      <h2>결과 <span id="count" style="color:var(--muted);font-weight:400;font-size:.85rem"></span></h2>
-      <div id="results"><div class="empty">검색을 눌러 사례를 찾아보세요.</div></div>
+      <h2>등록된 사례 <span id="count" style="color:var(--muted);font-weight:400;font-size:.85rem"></span></h2>
+      <div id="results"><div class="empty">불러오는 중…</div></div>
     </div>
 
     <!-- 등록/수정 -->
@@ -195,7 +195,7 @@
     $("q").addEventListener("keydown", (e) => { if (e.key === "Enter") doSearch(); });
     $("resetSearch").addEventListener("click", () => {
       $("q").value = ""; fillOffices($("fOffice"), true); fillSites($("fSite"), "", true); $("fEquip").value = "";
-      $("results").innerHTML = `<div class="empty">검색을 눌러 사례를 찾아보세요.</div>`; $("count").textContent = "";
+      doSearch();
     });
 
     // ===== 폼 =====
@@ -275,6 +275,7 @@
     });
 
     clearForm();
+    doSearch(); // 페이지 열 때 최근 등록 사례 목록 표시
   </script>
 </body>
 </html>
