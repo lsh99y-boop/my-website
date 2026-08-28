@@ -58,6 +58,9 @@
     .blue { background:var(--accent-weak); color:var(--accent); }
     .danger { background:var(--danger-weak); color:var(--danger); }
     .grid { display:grid; gap:12px; }
+    .charbar { display:flex; flex-wrap:wrap; gap:5px; margin-top:6px; }
+    .chbtn { font-size:.98rem; line-height:1; min-width:34px; padding:7px 9px; width:auto; background:var(--surface); border:1px solid var(--line-strong); border-radius:8px; color:var(--ink); cursor:pointer; }
+    .chbtn:hover { background:var(--accent-weak); border-color:var(--accent-border); color:var(--accent); }
 
     /* 검색 */
     .searchrow { display:flex; gap:10px; flex-wrap:wrap; align-items:end; }
@@ -219,6 +222,35 @@
     import { OFFICE_LIST, OFFICES } from "./sites.js";
     import { compressImage } from "./photo.js";
     import { uploadPhoto, photoUrl, removePhoto, fetchPhotoBytes } from "./photoStorage.js";
+
+    // 휴대폰 키보드에 없는 특수문자 — 탭하면 커서 위치에 삽입
+    const SPECIALS = ["※", "◎", "○", "●", "▣", "■", "▶", "·", "→", "℃", "±", "×", "㎡", "㎥"];
+    function insertAtCursor(ta, text) {
+      const sel = ta._sel;
+      const s = (sel && sel[0] != null) ? sel[0] : ta.value.length;
+      const e = (sel && sel[1] != null) ? sel[1] : s;
+      ta.value = ta.value.slice(0, s) + text + ta.value.slice(e);
+      const pos = s + text.length;
+      ta.focus(); try { ta.setSelectionRange(pos, pos); } catch (_) {}
+      ta.dispatchEvent(new Event("input", { bubbles: true }));
+      ta._sel = [pos, pos];
+    }
+    function attachCharbar(ta) {
+      if (!ta) return;
+      const bar = document.createElement("div");
+      bar.className = "charbar";
+      SPECIALS.forEach((ch) => {
+        const b = document.createElement("button");
+        b.type = "button"; b.className = "chbtn"; b.textContent = ch;
+        b.addEventListener("mousedown", (e) => e.preventDefault()); // 포커스 유지
+        b.addEventListener("click", () => insertAtCursor(ta, ch));
+        bar.appendChild(b);
+      });
+      const saveSel = () => { ta._sel = [ta.selectionStart, ta.selectionEnd]; };
+      ["keyup", "mouseup", "touchend", "focus", "input"].forEach((ev) => ta.addEventListener(ev, saveSel));
+      ta.insertAdjacentElement("afterend", bar);
+    }
+    ["symptom", "action", "plan"].forEach((id) => attachCharbar(document.getElementById(id)));
 
     const APP_PIN = "7590";
     (function () {
