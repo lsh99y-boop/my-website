@@ -5,29 +5,57 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>일일업무일지 작성</title>
   <style>
-    :root { --line:#d7dbe0; --bg:#f6f8fa; --accent:#2f6fed; }
+    :root { --line:#d7dbe0; --bg:#eef1f5; --accent:#2f6fed; --ink:#1a2230; --muted:#6b7480; }
     * { box-sizing: border-box; }
-    body { font-family: system-ui, "Malgun Gothic", sans-serif; margin: 0; background: var(--bg); color: #1a2230; }
-    header { background: #fff; border-bottom: 1px solid var(--line); padding: 16px 20px; }
-    header h1 { font-size: 1.15rem; margin: 0; }
-    header p { margin: 4px 0 0; color: #667; font-size: .85rem; }
-    main { max-width: 900px; margin: 22px auto; padding: 0 16px 60px; }
-    .card { background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 18px; margin-bottom: 16px; }
-    .row { display: flex; gap: 14px; flex-wrap: wrap; align-items: end; }
-    .field { display: flex; flex-direction: column; gap: 5px; }
-    label { font-size: .82rem; color: #445; font-weight: 600; }
-    input, textarea { font: inherit; border: 1px solid var(--line); border-radius: 7px; padding: 8px 10px; background: #fff; }
-    input:focus, textarea:focus { outline: 2px solid var(--accent); border-color: var(--accent); }
-    textarea { width: 100%; min-height: 70px; resize: vertical; line-height: 1.5; }
-    .facility { margin-bottom: 12px; }
-    .facility label { display: block; margin-bottom: 5px; font-size: .9rem; color: #1a2230; }
-    .facility .hint { color: #8a94a3; font-weight: 400; font-size: .78rem; }
-    .bar { position: sticky; bottom: 0; background: #fff; border-top: 1px solid var(--line);
-           padding: 14px 16px; display: flex; gap: 12px; align-items: center; justify-content: flex-end; }
+    body { font-family: system-ui, "Malgun Gothic", sans-serif; margin: 0; background: var(--bg); color: var(--ink); }
+
+    /* 상단 툴바 (국·날짜·날씨 항상 보임) */
+    .topbar { position: sticky; top: 0; z-index: 50; background: #fff; border-bottom: 1px solid var(--line); box-shadow: 0 1px 4px rgba(0,0,0,.04); }
+    .topbar-inner { max-width: 1120px; margin: 0 auto; padding: 10px 18px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+    .brand { font-weight: 800; font-size: 1.05rem; white-space: nowrap; }
+    .brand small { display:block; font-weight: 400; color: var(--muted); font-size: .72rem; }
+    .tb-office { display:flex; align-items:center; gap:8px; background:#eef3ff; border:1px solid #cfdcfb; border-radius:10px; padding:5px 8px 5px 12px; }
+    .tb-office label { font-size:.72rem; color:var(--accent); font-weight:700; }
+    #office { font: inherit; font-weight:700; font-size:1rem; border:0; background:transparent; color:var(--accent); cursor:pointer; padding:2px 4px; }
+    .tb-field { display:flex; flex-direction:column; }
+    .tb-field label { font-size:.68rem; color:var(--muted); font-weight:600; }
+    .topbar input, .topbar select { font: inherit; border:1px solid var(--line); border-radius:7px; padding:6px 8px; background:#fff; }
+    .tb-actions { margin-left:auto; display:flex; gap:6px; }
+    .tb-actions a, .tb-actions button { color:var(--accent); background:#fff; text-decoration:none; font-weight:600; font-size:.82rem; white-space:nowrap; border:1px solid #cfdcfb; border-radius:8px; padding:7px 10px; cursor:pointer; }
+
+    main { max-width: 1120px; margin: 16px auto; padding: 0 16px 90px; }
+    input, textarea, select { font: inherit; }
+    input:focus, textarea:focus, select:focus { outline: 2px solid var(--accent); border-color: var(--accent); }
+
+    .hint-top { color: var(--muted); font-size: .82rem; margin: 4px 2px 12px; }
+    .warn { background:#fff6e6; border-left:4px solid #e0a800; padding:9px 13px; border-radius:6px; font-size:.85rem; color:#8a6d00; margin-bottom:12px; }
+
+    /* 시설 그리드 (넓은 화면 2열) */
+    #facilities { display: grid; grid-template-columns: 1fr; gap: 12px; }
+    @media (min-width: 860px) { #facilities { grid-template-columns: 1fr 1fr; } }
+    .fac { background:#fff; border:1px solid var(--line); border-radius:10px; padding:12px 14px; display:flex; flex-direction:column; }
+    .fac.filled { border-color:#a9c5ff; box-shadow: inset 3px 0 0 var(--accent); }
+    .fac-head { display:flex; align-items:center; gap:8px; margin-bottom:7px; }
+    .fac-name { font-weight:700; font-size:.98rem; }
+    .fac-badge { font-size:.68rem; padding:1px 7px; border-radius:20px; background:#eef1f5; color:var(--muted); font-weight:600; }
+    .fac.filled .fac-badge { background:#e3f0e8; color:#067d3b; }
+    .fac-photobtn { margin-left:auto; font-size:.76rem; color:var(--accent); background:#eef3ff; border:1px solid #dbe6ff; border-radius:7px; padding:4px 9px; cursor:pointer; font-weight:600; }
+    .fac textarea { width:100%; min-height:56px; resize:vertical; line-height:1.5; border:1px solid var(--line); border-radius:7px; padding:8px 10px; background:#fff; }
+    .fac-photos { margin-top:9px; }
+    .thumbs { display:grid; grid-template-columns:repeat(auto-fill,minmax(90px,1fr)); gap:7px; margin-top:7px; }
+
+    .card { background:#fff; border:1px solid var(--line); border-radius:10px; padding:16px; margin-top:16px; }
+    .field { display:flex; flex-direction:column; gap:5px; }
+    .field label { font-size:.8rem; color:#445; font-weight:600; }
+    .card input { border:1px solid var(--line); border-radius:7px; padding:8px 10px; background:#fff; }
+
+    .bar { position: sticky; bottom: 0; z-index: 40; background: #fff; border-top: 1px solid var(--line); box-shadow:0 -2px 8px rgba(0,0,0,.06);
+           padding: 12px 18px; display: flex; gap: 12px; align-items: center; }
+    .bar-inner { max-width:1120px; margin:0 auto; width:100%; display:flex; gap:12px; align-items:center; }
     button { font: inherit; font-weight: 600; border: 0; border-radius: 8px; padding: 11px 20px; cursor: pointer; }
     .primary { background: var(--accent); color: #fff; }
     .primary:disabled { opacity: .5; cursor: default; }
-    #status { margin-right: auto; font-size: .88rem; color: #667; }
+    #status { margin-right: auto; font-size: .88rem; color: var(--muted); }
     #status.ok { color: #067d3b; } #status.err { color: #b3261e; }
   </style>
 </head>
@@ -41,40 +69,24 @@
     <div id="pinErr" style="color:#ff6b6b;font-size:.85rem;height:1.1em"></div>
   </div>
 
-  <header style="display:flex;justify-content:space-between;align-items:center;gap:12px">
-    <div>
-      <h1>📋 일일업무일지 작성</h1>
-      <p>KBS 전국 송중계소 · 소속국 선택 후 작성 → 한글파일(.hwpx)</p>
+  <div class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">📋 일일업무일지<small>KBS 전국 송중계소</small></div>
+      <div class="tb-office"><label>소속국</label><select id="office"></select></div>
+      <div class="tb-field"><label for="date">날짜</label><input type="date" id="date" /></div>
+      <div class="tb-field"><label for="weekday">요일</label><input type="text" id="weekday" style="width:50px" readonly /></div>
+      <div class="tb-field" style="min-width:120px"><label for="weather">날씨</label><input type="text" id="weather" placeholder="맑음" /></div>
+      <div class="tb-actions">
+        <button id="searchOpen">🔍 검색</button>
+        <a href="cases.html">🔧 고장사례</a>
+        <a href="help.html">📖 사용법</a>
+      </div>
     </div>
-    <div style="display:flex;gap:8px">
-      <button id="searchOpen" style="color:#2f6fed;background:#fff;font-weight:600;font-size:.88rem;white-space:nowrap;border:1px solid #cfdcfb;border-radius:8px;padding:8px 12px;cursor:pointer">🔍 검색</button>
-      <a href="cases.html" style="color:#2f6fed;text-decoration:none;font-weight:600;font-size:.88rem;white-space:nowrap;border:1px solid #cfdcfb;border-radius:8px;padding:8px 12px">🔧 고장사례</a>
-      <a href="help.html" style="color:#2f6fed;text-decoration:none;font-weight:600;font-size:.88rem;white-space:nowrap;border:1px solid #cfdcfb;border-radius:8px;padding:8px 12px">📖 사용법</a>
-    </div>
-  </header>
+  </div>
 
   <main>
-    <div class="card">
-      <div class="row">
-        <div class="field">
-          <label for="office">소속국</label>
-          <select id="office" style="font:inherit;border:1px solid var(--line);border-radius:7px;padding:8px 10px;background:#fff;min-width:110px"></select>
-        </div>
-        <div class="field">
-          <label for="date">날짜</label>
-          <input type="date" id="date" />
-        </div>
-        <div class="field">
-          <label for="weekday">요일</label>
-          <input type="text" id="weekday" style="width:70px" readonly />
-        </div>
-        <div class="field" style="flex:1; min-width:160px">
-          <label for="weather">날씨</label>
-          <input type="text" id="weather" placeholder="예: 맑음" />
-        </div>
-      </div>
-      <div id="dateWarn" style="display:none;margin-top:12px;background:#fff6e6;border-left:4px solid #e0a800;padding:9px 13px;border-radius:6px;font-size:.85rem;color:#8a6d00">⚠️ <b>오늘 날짜가 아닙니다.</b> 과거·미래 날짜에 작성 중이에요 — 저장할 때 한 번 더 확인합니다.</div>
-    </div>
+    <div id="dateWarn" class="warn" style="display:none">⚠️ <b>오늘 날짜가 아닙니다.</b> 과거·미래 날짜에 작성 중 — 저장 시 한 번 더 확인합니다.</div>
+    <div class="hint-top">시설칸에 쓰면 <b>자동 저장</b>돼요. 사진은 각 칸의 <b>📷 사진</b> 버튼으로 추가(중간 삽입은 <code>[사진1]</code>). 빈칸은 문서에 ◎만 표시.</div>
 
     <div id="facilities">
       <!-- 시설별 카드(내용 + 사진) -->
@@ -106,9 +118,11 @@
   </div>
 
   <div class="bar">
-    <span id="status"></span>
-    <button id="save" style="background:#e8eefc;color:#2f6fed">💾 저장</button>
-    <button class="primary" id="download">한글파일 다운로드</button>
+    <div class="bar-inner">
+      <span id="status"></span>
+      <button id="save" style="background:#e8eefc;color:#2f6fed">💾 저장</button>
+      <button class="primary" id="download">📄 한글 다운로드</button>
+    </div>
   </div>
 
   <script type="module">
@@ -171,6 +185,17 @@
       }
     }
 
+    // 시설칸 작성 상태(작성됨/빈칸 + 사진수) 갱신
+    function updateFacStatus(key) {
+      const fac = fc.querySelector(`.fac[data-fac="${CSS.escape(key)}"]`);
+      if (!fac) return;
+      const ta = fac.querySelector("textarea");
+      const nphoto = (photosByKey[key] || []).length;
+      const has = ta.value.trim().length > 0 || nphoto > 0;
+      fac.classList.toggle("filled", has);
+      fac.querySelector(".fac-badge").textContent = has ? (nphoto ? `작성·📷${nphoto}` : "작성됨") : "빈칸";
+    }
+
     // 국의 시설 카드 생성 (국 바뀌면 다시 그림)
     function buildFacilityCards() {
       FACILITIES = facilitiesFor(currentOffice);
@@ -179,21 +204,29 @@
       for (const [label, key] of FACILITIES) {
         photosByKey[key] = [];
         const div = document.createElement("div");
-        div.className = "card";
+        div.className = "fac";
+        div.dataset.fac = key;
         div.innerHTML = `
-          <label>${label} <span class="hint" style="color:#8a94a3;font-weight:400;font-size:.78rem">(여러 줄 가능 · 빈칸은 ◎만 표시)</span></label>
-          <textarea data-key="${key}" placeholder="업무 추진 내용...  (중간에 사진을 넣으려면 [사진1] 처럼 입력)" style="margin-top:6px"></textarea>
-          <div style="margin-top:10px">
-            <span style="font-size:.8rem;color:#556;font-weight:600">📷 사진</span>
-            <span class="hint" style="color:#8a94a3;font-size:.75rem">(선택 · 여러 장 · 자동 KB압축 · 마커 없으면 내용 아래에 붙음)</span>
-            <input type="file" accept="image/*" multiple data-photo="${key}" style="display:block;margin-top:6px" />
-            <div class="thumbs" data-thumbs="${key}" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;margin-top:8px"></div>
+          <div class="fac-head">
+            <span class="fac-name">${label}</span>
+            <span class="fac-badge">빈칸</span>
+            <button type="button" class="fac-photobtn" data-toggle="${key}">📷 사진</button>
+          </div>
+          <textarea data-key="${key}" placeholder="업무 추진 내용…  (중간 삽입은 [사진1])"></textarea>
+          <div class="fac-photos" data-photobox="${key}" style="display:none">
+            <input type="file" accept="image/*" multiple data-photo="${key}" />
+            <div class="thumbs" data-thumbs="${key}"></div>
           </div>`;
         fc.appendChild(div);
       }
       for (const inp of fc.querySelectorAll("[data-photo]")) inp.addEventListener("change", onPhotoInput);
       for (const ta of fc.querySelectorAll("textarea[data-key]"))
-        ta.addEventListener("input", () => { touched.add(ta.dataset.key); scheduleAutoSave(); });
+        ta.addEventListener("input", () => { touched.add(ta.dataset.key); updateFacStatus(ta.dataset.key); scheduleAutoSave(); });
+      for (const btn of fc.querySelectorAll(".fac-photobtn"))
+        btn.addEventListener("click", () => {
+          const box = fc.querySelector(`[data-photobox="${CSS.escape(btn.dataset.toggle)}"]`);
+          box.style.display = box.style.display === "none" ? "" : "none";
+        });
     }
 
     function renderThumbs(key) {
@@ -222,6 +255,9 @@
         });
         box.appendChild(el);
       });
+      const pbox = fc.querySelector(`[data-photobox="${CSS.escape(key)}"]`);
+      if (pbox && photosByKey[key].length) pbox.style.display = "";
+      updateFacStatus(key);
     }
 
     const status = document.getElementById("status");
