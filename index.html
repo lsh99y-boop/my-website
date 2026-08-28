@@ -73,7 +73,11 @@
     .nav-group:first-child { padding-top:4px; }
     .navitem { display:flex; align-items:center; gap:9px; padding:9px 11px; border-radius:9px; cursor:pointer; font-size:.9rem; transition:background .12s; position:relative; }
     .navitem:hover { background:var(--surface-2); }
-    .navitem.active { background:var(--accent-weak); color:var(--accent); font-weight:800; box-shadow:inset 3px 0 0 var(--accent); }
+    .navitem.active { background:var(--accent); color:var(--accent-ink); font-weight:800; }
+    .navitem.active .cnt { color:var(--accent-ink); opacity:.85; }
+    .navitem.active .dot { background:rgba(255,255,255,.5); }
+    .navitem.active.done .dot { background:var(--green); }
+    .navitem.active.dirty .dot { background:var(--amber); }
     .navitem .dot { width:16px; height:16px; border-radius:50%; flex:none; display:inline-flex; align-items:center; justify-content:center; font-size:.62rem; color:#fff; background:var(--line-strong); }
     .navitem.done .dot { background:var(--green); }
     .navitem.dirty .dot { background:var(--amber); }
