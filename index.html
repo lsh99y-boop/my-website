@@ -110,12 +110,23 @@
     #status.ok { color:var(--green); } #status.err { color:var(--danger); }
 
     @media (max-width: 880px) {
-      .layout { grid-template-columns:1fr; gap:14px; }
-      .sidebar { position:static; }
-      .navlist { display:flex; overflow-x:auto; gap:4px; }
-      .navitem { white-space:nowrap; }
+      /* 상단바 살짝 압축 */
+      .topbar-inner { gap:6px 8px; padding:8px 12px; }
+      .brand { font-size:.95rem; }
+      .tb-actions { gap:5px; width:100%; margin-left:0; flex-wrap:wrap; }
+      .tb-btn { font-size:.8rem; padding:7px 9px; }
+
+      /* 세로 흐름: 진행률 → 시설칩 → 작성칸 → 저장/다운로드 */
+      .layout { display:grid; grid-template-columns:minmax(0,1fr); gap:12px; margin:12px auto; padding:0 12px 60px; }
+      .sidebar { display:contents; }
+      .prog, .navlist, .content, .side-actions { min-width:0; }
+      .prog { order:1; padding:11px 14px; }
+      .navlist { order:2; display:flex; overflow-x:auto; gap:5px; padding:6px; -webkit-overflow-scrolling:touch; }
+      .navitem { white-space:nowrap; flex:0 0 auto; }
       .navitem .cnt { display:none; }
-      .content { max-width:100%; }
+      .content { order:3; }
+      .side-actions { order:4; }
+      .content.focus .fac textarea { min-height:240px; }
     }
   </style>
 </head>
