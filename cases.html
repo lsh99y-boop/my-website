@@ -200,7 +200,7 @@
       inp.focus();
     })();
 
-    const EQUIP_TYPES = ["송신기", "엑사이터", "중계기", "RackController"];
+    const EQUIP_TYPES = ["송신기", "엑사이터", "중계기", "RackController", "기타"];
     const $ = (id) => document.getElementById(id);
     const esc = (s) => (s || "").replace(/</g, "&lt;");
     const setStatus = (m, c) => { $("status").textContent = m; $("status").className = c || ""; };
