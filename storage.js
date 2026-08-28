@@ -25,6 +25,20 @@ export async function loadLog(office, log_date) {
   return data;
 }
 
+// 직전(현재 날짜보다 이전)에 작성된 가장 최근 일지 1건 — "전일 업무 가져오기"용
+export async function loadPrevLog(office, before_date) {
+  const { data, error } = await supabase
+    .from("work_logs")
+    .select("*")
+    .eq("office", office)
+    .lt("log_date", before_date)
+    .order("log_date", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
 // 한 국의 한 달치 (yyyymm = "2026-08"), 날짜순
 export async function listMonth(office, yyyymm) {
   const start = yyyymm + "-01";
