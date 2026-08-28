@@ -115,6 +115,9 @@
     .blk-tool { font-size:.82rem; line-height:1; padding:5px 8px; background:var(--surface); border:1px solid var(--line-strong); border-radius:7px; color:var(--muted); cursor:pointer; }
     .blk-tool:hover { background:var(--accent-weak); color:var(--accent); border-color:var(--accent-border); }
     .blk textarea { background:var(--surface); }
+    .charbar { display:flex; flex-wrap:wrap; gap:5px; margin-top:7px; }
+    .chbtn { font-size:.98rem; line-height:1; min-width:34px; padding:7px 9px; background:var(--surface); border:1px solid var(--line-strong); border-radius:8px; color:var(--ink); cursor:pointer; }
+    .chbtn:hover { background:var(--accent-weak); border-color:var(--accent-border); color:var(--accent); }
     .blk .dropzone { margin-top:8px; padding:9px; font-size:.8rem; border-radius:9px; }
     .blk .thumbs { grid-template-columns:repeat(auto-fill,minmax(92px,1fr)); gap:8px; }
     .addblk { width:100%; margin-top:12px; background:transparent; border:1.5px dashed var(--accent-border); color:var(--accent); font-weight:700; border-radius:11px; padding:11px; cursor:pointer; }
@@ -247,6 +250,17 @@
     // Supabase Storage 키는 ASCII만 허용 → 한글(국·송신소) 경로를 안전하게 인코딩
     const safeSeg = (s) => (s || "").replace(/[^A-Za-z0-9._-]/g, (c) => "_" + c.charCodeAt(0).toString(16));
     const emptyBlock = () => ({ id: ++blkSeq, text: "", photos: [] });
+
+    // 휴대폰 키보드에 없는 특수문자 — 탭하면 커서 위치에 삽입
+    const SPECIALS = ["※", "◎", "○", "●", "▣", "■", "▶", "·", "→", "℃", "±", "×", "㎡", "㎥"];
+    function insertAtCursor(ta, sel, text) {
+      const s = (sel && sel[0] != null) ? sel[0] : ta.value.length;
+      const e = (sel && sel[1] != null) ? sel[1] : s;
+      ta.value = ta.value.slice(0, s) + text + ta.value.slice(e);
+      const pos = s + text.length;
+      ta.focus(); try { ta.setSelectionRange(pos, pos); } catch (_) {}
+      ta.dispatchEvent(new Event("input", { bubbles: true }));
+    }
     const allPhotosOf = (key) => (models[key] || []).flatMap((b) => b.photos);
     const findBlock = (key, blkId) => (models[key] || []).find((b) => b.id === blkId);
 
@@ -419,6 +433,7 @@
             </div>
           </div>
           <textarea placeholder="업무 내용… (사진은 아래 칸에 넣으면 이 내용 밑에 들어가요)"></textarea>
+          <div class="charbar">${SPECIALS.map((ch) => `<button type="button" class="chbtn">${ch}</button>`).join("")}</div>
           <div class="dropzone" data-drop>📷 이 항목 사진 — 드래그하거나 눌러서 추가</div>
           <input type="file" accept="image/*" multiple style="display:none" />
           <div class="thumbs" data-thumbs></div>`;
@@ -426,6 +441,13 @@
         ta.value = blk.text || "";
         ta.addEventListener("input", () => { blk.text = ta.value; touched.add(key); autoGrow(ta); updateFacStatus(key); scheduleAutoSave(); });
         requestAnimationFrame(() => autoGrow(ta));
+        // 커서 위치 저장(특수문자 삽입용) — 칩을 눌러 포커스가 빠져도 마지막 위치 사용
+        const saveSel = () => { blk._sel = [ta.selectionStart, ta.selectionEnd]; };
+        ["keyup", "mouseup", "touchend", "focus", "input"].forEach((ev) => ta.addEventListener(ev, saveSel));
+        el.querySelectorAll(".chbtn").forEach((btn) => {
+          btn.addEventListener("mousedown", (e) => e.preventDefault()); // 포커스 유지
+          btn.addEventListener("click", () => { insertAtCursor(ta, blk._sel, btn.textContent); blk._sel = null; });
+        });
         const input = el.querySelector("input[type=file]");
         const dz = el.querySelector(".dropzone");
         input.addEventListener("change", (e) => { const files = [...e.target.files]; e.target.value = ""; processPhotoFiles(key, blk.id, files); });
