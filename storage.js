@@ -41,6 +41,32 @@ export async function listMonth(office, yyyymm) {
   return data || [];
 }
 
+// 일지 내용 검색: 키워드가 들어간 시설칸을 (국/날짜/시설/스니펫)으로 반환
+function snippet(text, kw) {
+  const i = text.toLowerCase().indexOf(kw.toLowerCase());
+  if (i < 0) return text.slice(0, 40);
+  const s = Math.max(0, i - 12);
+  return (s > 0 ? "…" : "") + text.slice(s, i + kw.length + 28).replace(/\n/g, " ") + "…";
+}
+export async function searchLogs(q, office) {
+  if (!q || !q.trim()) return [];
+  let query = supabase.from("work_logs").select("office,log_date,contents").order("log_date", { ascending: false }).limit(3000);
+  if (office) query = query.eq("office", office);
+  const { data, error } = await query;
+  if (error) throw error;
+  const kw = q.trim();
+  const out = [];
+  for (const r of data || []) {
+    const c = r.contents || {};
+    for (const key in c) {
+      const val = c[key] || "";
+      if (val && val.toLowerCase().includes(kw.toLowerCase()))
+        out.push({ office: r.office, log_date: r.log_date, key, snippet: snippet(val, kw) });
+    }
+  }
+  return out;
+}
+
 // N개월 지난 일지 자동 삭제 (기본 6개월). 국 무관.
 export async function cleanupOld(months = 6) {
   const d = new Date();

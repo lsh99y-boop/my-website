@@ -33,3 +33,11 @@ export function facilitiesFor(office) {
   const sites = (OFFICES[office] || []).map((name) => [name, "S_" + name]);
   return [...COMMON_TOP, ...sites, ...COMMON_BOTTOM];
 }
+
+// 시설 키 → 라벨 (검색 결과 표시용)
+const KEY_LABEL = { C_song: "송출기술", C_tvram: "TVR/AM", C_minwon: "민원사항", C_teuki: "특기사항" };
+export function labelForKey(key) {
+  if (KEY_LABEL[key]) return KEY_LABEL[key];
+  if (key && key.startsWith("S_")) return key.slice(2);
+  return key || "";
+}
