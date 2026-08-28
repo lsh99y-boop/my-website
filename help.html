@@ -62,6 +62,15 @@
     th { background:var(--surface-2); }
     .muted { color:var(--muted); font-size:.88rem; }
     .chip { display:inline-block; background:var(--surface-2); border:1px solid var(--line); border-radius:6px; padding:1px 7px; font-size:.86rem; font-weight:600; }
+    @media print {
+      :root { --bg:#fff; --surface:#fff; }
+      header { position:static; box-shadow:none; }
+      header .sp { display:none; }
+      main { margin:0 auto; padding:0; }
+      .card { break-inside:avoid; box-shadow:none; }
+      .card:has(.toc) { display:none; }
+      a { color:var(--ink); text-decoration:none; }
+    }
   </style>
 </head>
 <body>
@@ -69,6 +78,7 @@
     <h1>📖 일일업무일지 사용법</h1>
     <div class="sp">
       <a href="index.html">← 작성 화면</a>
+      <a href="일일업무일지_사용법.pdf" target="_blank" rel="noopener">📄 PDF</a>
       <button class="tb-btn icon-btn" id="themeToggle" title="라이트/다크 전환">🌙</button>
     </div>
   </header>
