@@ -88,7 +88,7 @@
     .content.focus { max-width:100%; }
     .content.focus .fac { padding:24px 28px; }
     .content.focus .fac-name { font-size:1.4rem; }
-    .content.focus .fac textarea { min-height:320px; font-size:1.05rem; }
+    .content.focus .fac .blk textarea { font-size:1.02rem; min-height:110px; }
     .hint-top { color:var(--muted); font-size:.82rem; margin:0 2px 14px; }
     .warn { background:var(--amberbg); border-left:4px solid var(--amber); padding:10px 14px; border-radius:8px; font-size:.85rem; color:var(--amber); margin-bottom:14px; }
     #facilities { display:flex; flex-direction:column; gap:16px; }
@@ -105,6 +105,20 @@
     .dropzone { margin-top:11px; border:1.5px dashed var(--line-strong); border-radius:11px; padding:13px; text-align:center; color:var(--muted); font-size:.84rem; cursor:pointer; background:var(--surface-2); transition:.12s; }
     .dropzone.drag { border-color:var(--accent); background:var(--accent-weak); color:var(--accent); }
     .thumbs { display:grid; grid-template-columns:repeat(auto-fill,minmax(100px,1fr)); gap:9px; margin-top:10px; }
+
+    /* 항목(블록) */
+    .blocks { display:flex; flex-direction:column; gap:12px; }
+    .blk { border:1px solid var(--line-strong); border-radius:12px; padding:10px 12px 12px; background:var(--surface-2); }
+    .blk-head { display:flex; align-items:center; gap:8px; margin-bottom:7px; }
+    .blk-num { width:22px; height:22px; border-radius:50%; background:var(--accent); color:var(--accent-ink); font-size:.75rem; font-weight:700; display:inline-flex; align-items:center; justify-content:center; flex:none; }
+    .blk-tools { margin-left:auto; display:flex; gap:4px; }
+    .blk-tool { font-size:.82rem; line-height:1; padding:5px 8px; background:var(--surface); border:1px solid var(--line-strong); border-radius:7px; color:var(--muted); cursor:pointer; }
+    .blk-tool:hover { background:var(--accent-weak); color:var(--accent); border-color:var(--accent-border); }
+    .blk textarea { background:var(--surface); }
+    .blk .dropzone { margin-top:8px; padding:9px; font-size:.8rem; border-radius:9px; }
+    .blk .thumbs { grid-template-columns:repeat(auto-fill,minmax(92px,1fr)); gap:8px; }
+    .addblk { width:100%; margin-top:12px; background:transparent; border:1.5px dashed var(--accent-border); color:var(--accent); font-weight:700; border-radius:11px; padding:11px; cursor:pointer; }
+    .addblk:hover { background:var(--accent-weak); }
 
     #status { font-size:.82rem; color:var(--muted); }
     #status.ok { color:var(--green); } #status.err { color:var(--danger); }
@@ -126,7 +140,7 @@
       .navitem .cnt { display:none; }
       .content { order:3; }
       .side-actions { order:4; }
-      .content.focus .fac textarea { min-height:240px; }
+      .blk textarea { min-height:60px; }
     }
   </style>
 </head>
@@ -175,7 +189,7 @@
     </aside>
     <div class="content">
       <div id="dateWarn" class="warn" style="display:none">⚠️ <b>오늘 날짜가 아닙니다.</b> 과거·미래 날짜에 작성 중 — 저장 시 한 번 더 확인합니다.</div>
-      <div class="hint-top">시설칸에 쓰면 <b>자동 저장</b>돼요. 사진은 각 칸에 <b>드래그하거나 눌러서</b> 추가(중간 삽입은 <code>[사진1]</code>). 빈칸은 문서에 ◎만.</div>
+      <div class="hint-top"><b>항목</b>별로 작업 내용을 쓰고, <b>그 항목의 사진칸</b>에 넣으면 문서에서 글 바로 아래에 들어가요. 작업이 여러 개면 <b>＋ 항목 추가</b>. 내용은 <b>자동 저장</b>.</div>
       <div id="facilities"></div>
     </div>
   </div>
@@ -223,46 +237,89 @@
     let currentOffice = localStorage.getItem("ilji_office") || "대전";
     let FACILITIES = facilitiesFor(currentOffice); // [[label, key], ...]
 
-    // 시설별 사진 저장 {key: [{id, file}]}
-    const photosByKey = {};
-    let photoSeq = 0;
+    // 시설별 "항목(블록)" 모델: key -> [{id, text, photos:[{id,file,caption,path,w,h,url,uploading}]}]
+    const models = {};
+    let photoSeq = 0, blkSeq = 0;
     const touched = new Set();   // 이번에 내가 편집한 시설(이것만 저장 시 덮어씀)
     let weatherTouched = false;  // 날씨를 내가 바꿨나
 
     const fc = document.getElementById("facilities");
+    const emptyBlock = () => ({ id: ++blkSeq, text: "", photos: [] });
+    const allPhotosOf = (key) => (models[key] || []).flatMap((b) => b.photos);
+    const findBlock = (key, blkId) => (models[key] || []).find((b) => b.id === blkId);
 
-    // 사진 업로드 (파일 배열) — 파일선택·드래그앤드롭 공용
-    async function processPhotoFiles(key, files) {
+    // 사진 업로드 (한 항목에) — 파일선택·드래그앤드롭 공용
+    async function processPhotoFiles(key, blkId, files) {
+      const blk = findBlock(key, blkId); if (!blk) return;
       for (const f of files) {
         if (!f.type || !f.type.startsWith("image/")) continue;
         const item = { id: ++photoSeq, file: f, caption: "", uploading: true };
-        photosByKey[key].push(item);
-        renderThumbs(key);
+        blk.photos.push(item);
+        renderThumbs(key, blkId); updateFacStatus(key);
         try {
           const c = await compressImage(f);
           const path = `${currentOffice}/${dateEl.value}/${key}/${item.id}_${Date.now()}.jpg`;
           await uploadPhoto(path, c.bytes);
           item.path = path; item.w = c.w; item.h = c.h; item.url = photoUrl(path);
           item.uploading = false; item.file = null;
-          touched.add(key); renderThumbs(key); scheduleAutoSave();
+          touched.add(key); renderThumbs(key, blkId); updateFacStatus(key); scheduleAutoSave();
         } catch (err) {
           item.uploading = false;
           setStatus("사진 업로드 실패 (photos 버킷 필요)", "err");
-          renderThumbs(key);
+          renderThumbs(key, blkId);
         }
       }
+    }
+
+    // 블록 → 저장/출력용 (마커 텍스트 + 평면 사진배열). uploadedOnly=path 있는 것만
+    function facSerialize(key, uploadedOnly) {
+      const flat = [], parts = [];
+      for (const b of models[key] || []) {
+        const t = (b.text || "").trim();
+        const nums = [];
+        for (const p of b.photos) { if (uploadedOnly && !p.path) continue; flat.push(p); nums.push(flat.length); }
+        let part = t;
+        if (nums.length) part = (t ? t + "\n" : "") + "[사진 " + nums.join(",") + "]";
+        if (part) parts.push(part);
+      }
+      return { text: parts.join("\n\n"), photos: flat };
+    }
+    // 저장본(마커 텍스트 + 평면 사진) → 블록들
+    function deserializeBlocks(text, photos) {
+      text = (text || "").replace(/\r\n/g, "\n");
+      const chunks = text.split(/\n{2,}/);
+      const blocks = [], used = new Set();
+      for (const chunk of chunks) {
+        const lines = chunk.split("\n");
+        const blkPhotos = [];
+        while (lines.length) {
+          const m = lines[lines.length - 1].trim().match(/^\[(?:사진|그림)\s*([\d,\s]+)\]$/);
+          if (!m) break;
+          lines.pop();
+          for (const n of m[1].split(",").reverse()) {
+            const i = parseInt(n.trim(), 10) - 1;
+            if (i >= 0 && i < photos.length) { blkPhotos.unshift(photos[i]); used.add(i); }
+          }
+        }
+        const t = lines.join("\n").trim();
+        if (t || blkPhotos.length) blocks.push({ id: ++blkSeq, text: t, photos: blkPhotos });
+      }
+      const rest = photos.filter((_, i) => !used.has(i));
+      if (rest.length) { if (!blocks.length) blocks.push({ id: ++blkSeq, text: "", photos: [] }); blocks[blocks.length - 1].photos.push(...rest); }
+      if (!blocks.length) blocks.push({ id: ++blkSeq, text: "", photos: [] });
+      return blocks;
     }
 
     // 텍스트영역 자동 높이
     function autoGrow(ta) { ta.style.height = "auto"; ta.style.height = Math.max(70, ta.scrollHeight + 2) + "px"; }
 
+    function facHas(key) {
+      return (models[key] || []).some((b) => (b.text && b.text.trim()) || b.photos.length);
+    }
     // 진행률 갱신
     function updateProgress() {
       const total = FACILITIES.length; let done = 0;
-      for (const [, key] of FACILITIES) {
-        const ta = fc.querySelector(`.fac[data-fac="${CSS.escape(key)}"] textarea`);
-        if ((ta && ta.value.trim()) || (photosByKey[key] || []).length) done++;
-      }
+      for (const [, key] of FACILITIES) if (facHas(key)) done++;
       document.getElementById("progDone").textContent = done;
       document.getElementById("progTotal").textContent = total;
       document.getElementById("progFill").style.width = total ? Math.round(done / total * 100) + "%" : "0%";
@@ -272,9 +329,8 @@
     function updateFacStatus(key) {
       const fac = fc.querySelector(`.fac[data-fac="${CSS.escape(key)}"]`);
       const nav = document.querySelector(`.navitem[data-nav="${CSS.escape(key)}"]`);
-      const ta = fac && fac.querySelector("textarea");
-      const nphoto = (photosByKey[key] || []).length;
-      const has = (ta && ta.value.trim().length > 0) || nphoto > 0;
+      const nphoto = allPhotosOf(key).length;
+      const has = facHas(key);
       if (fac) {
         fac.classList.toggle("filled", has);
         fac.querySelector(".fac-badge").textContent = has ? (nphoto ? `작성·📷${nphoto}` : "작성됨") : "빈칸";
@@ -305,7 +361,7 @@
     function buildFacilityCards() {
       FACILITIES = facilitiesFor(currentOffice);
       fc.innerHTML = "";
-      for (const k in photosByKey) delete photosByKey[k];
+      for (const k in models) delete models[k];
       const nav = document.getElementById("navlist");
       nav.innerHTML = "";
       // 전체 보기
@@ -315,16 +371,21 @@
       allItem.addEventListener("click", () => applyView("__all__"));
       nav.appendChild(allItem);
       for (const [label, key] of FACILITIES) {
-        photosByKey[key] = [];
+        models[key] = [emptyBlock()];
         const div = document.createElement("div");
         div.className = "fac"; div.dataset.fac = key;
         div.innerHTML = `
           <div class="fac-head"><span class="fac-name">${label}</span><span class="fac-badge">빈칸</span></div>
-          <textarea data-key="${key}" placeholder="업무 추진 내용…  (사진 중간 삽입은 [사진1])"></textarea>
-          <div class="dropzone" data-drop="${key}">📷 사진 — 여기로 드래그하거나 클릭해서 추가</div>
-          <input type="file" accept="image/*" multiple data-photo="${key}" style="display:none" />
-          <div class="thumbs" data-thumbs="${key}"></div>`;
+          <div class="blocks" data-blocks="${key}"></div>
+          <button type="button" class="addblk" data-add="${key}">＋ 항목 추가</button>`;
         fc.appendChild(div);
+        div.querySelector(".addblk").addEventListener("click", () => {
+          models[key].push(emptyBlock()); touched.add(key);
+          renderBlocks(key); scheduleAutoSave();
+          const tas = div.querySelectorAll(".blk textarea");
+          const last = tas[tas.length - 1]; if (last) last.focus();
+        });
+        renderBlocks(key);
         const ni = document.createElement("div");
         ni.className = "navitem"; ni.dataset.nav = key;
         ni.innerHTML = `<span class="dot"></span><span class="nm">${label}</span><span class="cnt"></span>`;
@@ -334,48 +395,90 @@
         });
         nav.appendChild(ni);
       }
-      for (const ta of fc.querySelectorAll("textarea[data-key]"))
-        ta.addEventListener("input", () => { touched.add(ta.dataset.key); autoGrow(ta); updateFacStatus(ta.dataset.key); scheduleAutoSave(); });
-      for (const inp of fc.querySelectorAll("[data-photo]"))
-        inp.addEventListener("change", (e) => { const key = e.target.dataset.photo; const files = [...e.target.files]; e.target.value = ""; processPhotoFiles(key, files); });
-      for (const dz of fc.querySelectorAll(".dropzone")) {
-        const key = dz.dataset.drop;
-        const input = fc.querySelector(`input[data-photo="${CSS.escape(key)}"]`);
-        dz.addEventListener("click", () => input.click());
-        dz.addEventListener("dragover", (e) => { e.preventDefault(); dz.classList.add("drag"); });
-        dz.addEventListener("dragleave", () => dz.classList.remove("drag"));
-        dz.addEventListener("drop", (e) => { e.preventDefault(); dz.classList.remove("drag"); processPhotoFiles(key, [...e.dataTransfer.files]); });
-      }
       updateProgress();
       if (FACILITIES.length) applyView(FACILITIES[0][1]); // 기본: 첫 시설만
     }
 
-    function renderThumbs(key) {
-      const box = document.querySelector(`[data-thumbs="${CSS.escape(key)}"]`);
+    // 한 시설의 항목(블록)들 렌더
+    function renderBlocks(key) {
+      const box = fc.querySelector(`.blocks[data-blocks="${CSS.escape(key)}"]`);
       if (!box) return;
       box.innerHTML = "";
-      photosByKey[key].forEach((item, idx) => {
+      const blocks = models[key];
+      blocks.forEach((blk, i) => {
+        const el = document.createElement("div");
+        el.className = "blk"; el.dataset.blk = blk.id;
+        el.innerHTML = `
+          <div class="blk-head"><span class="blk-num">${i + 1}</span>
+            <div class="blk-tools">
+              <button type="button" class="blk-tool up" title="위로">↑</button>
+              <button type="button" class="blk-tool down" title="아래로">↓</button>
+              <button type="button" class="blk-tool del" title="삭제">🗑</button>
+            </div>
+          </div>
+          <textarea placeholder="업무 내용… (사진은 아래 칸에 넣으면 이 내용 밑에 들어가요)"></textarea>
+          <div class="dropzone" data-drop>📷 이 항목 사진 — 드래그하거나 눌러서 추가</div>
+          <input type="file" accept="image/*" multiple style="display:none" />
+          <div class="thumbs" data-thumbs></div>`;
+        const ta = el.querySelector("textarea");
+        ta.value = blk.text || "";
+        ta.addEventListener("input", () => { blk.text = ta.value; touched.add(key); autoGrow(ta); updateFacStatus(key); scheduleAutoSave(); });
+        requestAnimationFrame(() => autoGrow(ta));
+        const input = el.querySelector("input[type=file]");
+        const dz = el.querySelector(".dropzone");
+        input.addEventListener("change", (e) => { const files = [...e.target.files]; e.target.value = ""; processPhotoFiles(key, blk.id, files); });
+        dz.addEventListener("click", () => input.click());
+        dz.addEventListener("dragover", (e) => { e.preventDefault(); dz.classList.add("drag"); });
+        dz.addEventListener("dragleave", () => dz.classList.remove("drag"));
+        dz.addEventListener("drop", (e) => { e.preventDefault(); dz.classList.remove("drag"); processPhotoFiles(key, blk.id, [...e.dataTransfer.files]); });
+        el.querySelector(".up").addEventListener("click", () => moveBlock(key, i, -1));
+        el.querySelector(".down").addEventListener("click", () => moveBlock(key, i, +1));
+        el.querySelector(".del").addEventListener("click", () => delBlock(key, i));
+        box.appendChild(el);
+        renderThumbs(key, blk.id);
+      });
+      updateFacStatus(key);
+    }
+
+    function moveBlock(key, i, dir) {
+      const arr = models[key]; const j = i + dir;
+      if (j < 0 || j >= arr.length) return;
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+      touched.add(key); renderBlocks(key); scheduleAutoSave();
+    }
+    async function delBlock(key, i) {
+      const arr = models[key]; const blk = arr[i];
+      for (const p of blk.photos) if (p.path) { try { await removePhoto(p.path); } catch (e) {} }
+      arr.splice(i, 1);
+      if (!arr.length) arr.push(emptyBlock());
+      touched.add(key); renderBlocks(key); scheduleAutoSave();
+    }
+
+    // 한 항목의 썸네일
+    function renderThumbs(key, blkId) {
+      const blk = findBlock(key, blkId); if (!blk) return;
+      const box = fc.querySelector(`.blk[data-blk="${blkId}"] [data-thumbs]`);
+      if (!box) return;
+      box.innerHTML = "";
+      blk.photos.forEach((item) => {
         const src = item.url || (item.file ? URL.createObjectURL(item.file) : "");
         const el = document.createElement("div");
-        el.style.cssText = "position:relative";
         el.innerHTML = `<div style="position:relative">
-            <img src="${src}" style="width:100%;height:78px;object-fit:cover;border-radius:5px;border:1px solid #d7dbe0${item.uploading ? ";opacity:.4" : ""}" />
-            <span style="position:absolute;top:2px;left:2px;background:#2f6fed;color:#fff;font-size:.68rem;font-weight:700;padding:1px 6px;border-radius:4px">사진${idx + 1}</span>
+            <img src="${src}" style="width:100%;height:78px;object-fit:cover;border-radius:6px;border:1px solid var(--line-strong)${item.uploading ? ";opacity:.4" : ""}" />
             ${item.uploading ? '<span style="position:absolute;bottom:2px;left:2px;background:rgba(0,0,0,.65);color:#fff;font-size:.62rem;padding:1px 5px;border-radius:4px">올리는중…</span>' : ""}
             <button title="삭제" style="position:absolute;top:2px;right:2px;background:rgba(0,0,0,.6);color:#fff;border:0;border-radius:50%;width:20px;height:20px;cursor:pointer;font-size:.7rem;padding:0">×</button>
           </div>
           <input type="text" placeholder="사진 설명" value="${(item.caption || "").replace(/"/g, "&quot;")}"
-                 style="width:100%;margin-top:4px;font-size:.72rem;padding:4px;border:1px solid #d7dbe0;border-radius:5px" />`;
+                 style="width:100%;margin-top:4px;font-size:.72rem;padding:4px;border:1px solid var(--line-strong);border-radius:5px;background:var(--surface);color:var(--ink)" />`;
         el.querySelector("input").addEventListener("input", (e) => { item.caption = e.target.value; touched.add(key); scheduleAutoSave(); });
         el.querySelector("button").addEventListener("click", async () => {
           if (item.path) { try { await removePhoto(item.path); } catch (err) {} }
-          const i = photosByKey[key].indexOf(item);
-          if (i >= 0) photosByKey[key].splice(i, 1);
-          touched.add(key); renderThumbs(key); scheduleAutoSave();
+          const idx = blk.photos.indexOf(item);
+          if (idx >= 0) blk.photos.splice(idx, 1);
+          touched.add(key); renderThumbs(key, blkId); updateFacStatus(key); scheduleAutoSave();
         });
         box.appendChild(el);
       });
-      updateFacStatus(key);
     }
 
     const status = document.getElementById("status");
@@ -391,19 +494,18 @@
       wdEl.value = WD[new Date(dateEl.value + "T00:00:00").getDay()];
     }
 
-    // 현재 폼 내용 수집 / 저장
+    // 현재 폼 내용 수집 / 저장 (블록 → 마커 텍스트)
     function gatherContents() {
       const contents = {};
-      for (const ta of document.querySelectorAll("textarea[data-key]"))
-        contents[ta.dataset.key] = ta.value;
+      for (const [, key] of FACILITIES) contents[key] = facSerialize(key, true).text;
       return contents;
     }
-    // 업로드 완료된 사진만 메타데이터로 (path 있는 것)
+    // 업로드 완료된 사진만 메타데이터로 (블록 순서대로 평면화)
     function gatherPhotos() {
       const photos = {};
       for (const [, key] of FACILITIES) {
-        const list = (photosByKey[key] || []).filter((p) => p.path);
-        if (list.length) photos[key] = list.map((p) => ({ path: p.path, caption: p.caption || "", w: p.w, h: p.h }));
+        const flat = facSerialize(key, true).photos;
+        if (flat.length) photos[key] = flat.map((p) => ({ path: p.path, caption: p.caption || "", w: p.w, h: p.h }));
       }
       return photos;
     }
@@ -449,17 +551,13 @@
         const log = await loadLog(currentOffice, dateEl.value);
         weatherEl.value = log?.weather || "";
         const c = (log && log.contents) || {};
-        for (const ta of document.querySelectorAll("textarea[data-key]")) {
-          ta.value = c[ta.dataset.key] || "";
-          autoGrow(ta);
-        }
-        // 사진 복원
         const ph = (log && log.photos) || {};
         for (const [, key] of FACILITIES) {
-          photosByKey[key] = (ph[key] || []).map((p) => ({
+          const flat = (ph[key] || []).map((p) => ({
             id: ++photoSeq, caption: p.caption || "", path: p.path, w: p.w, h: p.h, url: photoUrl(p.path),
           }));
-          renderThumbs(key);
+          models[key] = deserializeBlocks(c[key] || "", flat);
+          renderBlocks(key);
         }
         setStatus(log ? `📂 ${dateEl.value} 저장본 불러옴` : `🆕 ${dateEl.value} 새 일지`, "ok");
         prevDate = dateEl.value;
@@ -566,17 +664,19 @@
       const data = {
         MM: M, DD: D, WD: wdEl.value, WX: document.getElementById("weather").value,
       };
-      for (const ta of document.querySelectorAll("textarea[data-key]"))
-        data[ta.dataset.key] = ta.value;
+      // 블록 → 마커 텍스트 + 순서대로 평면화한 사진
+      const serial = {};
+      for (const [, key] of FACILITIES) serial[key] = facSerialize(key, true);
+      for (const [, key] of FACILITIES) data[key] = serial[key].text;
 
       btn.disabled = true;
       try {
-        // 시설별 사진: Storage에서 바이트 가져오기 (업로드 완료된 것만)
+        // 시설별 사진: Storage에서 바이트 가져오기 (블록 순서 그대로 → 마커 번호와 일치)
         const compressed = {};
         let done = 0, totalPhotos = 0;
-        for (const k in photosByKey) totalPhotos += (photosByKey[k] || []).filter((p) => p.path).length;
+        for (const [, key] of FACILITIES) totalPhotos += serial[key].photos.length;
         for (const [, key] of FACILITIES) {
-          const items = (photosByKey[key] || []).filter((p) => p.path);
+          const items = serial[key].photos;
           if (!items.length) continue;
           compressed[key] = [];
           for (const item of items) {
