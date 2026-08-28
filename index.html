@@ -444,7 +444,7 @@
           </div>
           <textarea placeholder="업무 내용… (사진은 아래 칸에 넣으면 이 내용 밑에 들어가요)"></textarea>
           <div class="charbar">${SPECIALS.map((ch) => `<button type="button" class="chbtn">${ch}</button>`).join("")}</div>
-          <div class="dropzone" data-drop>📷 사진입력 — 드래그하거나 눌러서 추가</div>
+          <div class="dropzone" data-drop>📷 사진입력 — 드래그하거나 클릭해서 추가</div>
           <input type="file" accept="image/*" multiple style="display:none" />
           <div class="thumbs" data-thumbs></div>`;
         const ta = el.querySelector("textarea");
