@@ -39,6 +39,23 @@ export async function loadPrevLog(office, before_date) {
   return data;
 }
 
+// 특정 시설(key)의 "직전 작성 내용" — 기준일 이전에서 그 시설칸이 채워진 가장 최근 날짜
+export async function loadPrevFacility(office, before_date, key) {
+  const { data, error } = await supabase
+    .from("work_logs")
+    .select("log_date, contents")
+    .eq("office", office)
+    .lt("log_date", before_date)
+    .order("log_date", { ascending: false })
+    .limit(60);
+  if (error) throw error;
+  for (const row of data || []) {
+    const t = (row.contents || {})[key];
+    if (t && t.trim()) return { log_date: row.log_date, text: t };
+  }
+  return null;
+}
+
 // 한 국의 한 달치 (yyyymm = "2026-08"), 날짜순
 export async function listMonth(office, yyyymm) {
   const start = yyyymm + "-01";

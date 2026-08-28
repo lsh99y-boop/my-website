@@ -59,8 +59,6 @@
     .tb-actions { margin-left:auto; display:flex; gap:6px; align-items:center; }
     .tb-btn { color:var(--accent); background:var(--surface); text-decoration:none; font-weight:600; font-size:.82rem; white-space:nowrap; border:1px solid var(--accent-border); border-radius:9px; padding:8px 11px; cursor:pointer; transition:background .12s,border-color .12s; }
     .tb-btn:hover { background:var(--accent-weak); }
-    .tb-import { background:var(--accent-weak); border-color:var(--accent-border); }
-    .tb-import:hover { background:var(--accent); color:var(--accent-ink); }
     .icon-btn { padding:8px 10px; font-size:1rem; line-height:1; }
 
     /* 레이아웃: 사이드바 + 본문 */
@@ -116,6 +114,8 @@
     .fac-name { font-weight:800; font-size:1.06rem; letter-spacing:-.01em; }
     .fac-badge { font-size:.68rem; padding:3px 10px; border-radius:20px; background:var(--surface-2); color:var(--muted); font-weight:700; }
     .fac.filled .fac-badge { background:var(--greenbg); color:var(--green); }
+    .fac-import { margin-left:auto; font-size:.74rem; font-weight:700; padding:6px 11px; background:var(--surface-2); border:1px solid var(--line-strong); border-radius:8px; color:var(--muted); cursor:pointer; white-space:nowrap; }
+    .fac-import:hover { background:var(--accent-weak); border-color:var(--accent-border); color:var(--accent); }
     .fac textarea { width:100%; min-height:74px; resize:none; overflow:hidden; line-height:1.6; border:1px solid var(--line-strong); border-radius:10px; padding:11px 13px; background:var(--surface); }
     .dropzone { margin-top:11px; border:1.5px dashed var(--line-strong); border-radius:11px; padding:13px; text-align:center; color:var(--muted); font-size:.84rem; cursor:pointer; background:var(--surface-2); transition:.12s; }
     .dropzone.drag { border-color:var(--accent); background:var(--accent-weak); color:var(--accent); }
@@ -180,7 +180,6 @@
       <div class="tb-field"><label for="date">날짜</label><input type="date" id="date" /></div>
       <div class="tb-field"><label for="weekday">요일</label><input type="text" id="weekday" style="width:46px" readonly /></div>
       <div class="tb-field" style="min-width:96px"><label for="weather">날씨</label><input type="text" id="weather" placeholder="맑음" /></div>
-      <button class="tb-btn tb-import" id="importPrev" title="직전 작성일의 내용을 현재 날짜로 복사(사진 제외)">📋 전일 업무 가져오기</button>
       <div class="tb-actions">
         <button class="tb-btn" id="searchOpen">🔍 검색</button>
         <a class="tb-btn" href="cases.html">🔧 정비사례입력</a>
@@ -239,7 +238,7 @@
   <script type="module">
     import { buildHwpx, buildMonthHwpx, downloadBlob } from "./hwpx.js";
     import { compressImage } from "./photo.js";
-    import { saveLog, loadLog, cleanupOld, listMonth, searchLogs, loadPrevLog } from "./storage.js";
+    import { saveLog, loadLog, cleanupOld, listMonth, searchLogs, loadPrevFacility } from "./storage.js";
     import { uploadPhoto, photoUrl, removePhoto, fetchPhotoBytes } from "./photoStorage.js";
     import { facilitiesFor, OFFICE_LIST, labelForKey } from "./sites.js";
 
@@ -420,10 +419,11 @@
         const div = document.createElement("div");
         div.className = "fac"; div.dataset.fac = key;
         div.innerHTML = `
-          <div class="fac-head"><span class="fac-name">${label}</span><span class="fac-badge">빈칸</span></div>
+          <div class="fac-head"><span class="fac-name">${label}</span><span class="fac-badge">빈칸</span><button type="button" class="fac-import" title="이 시설의 전일 작성 내용 가져오기(사진 제외)">📋 전일 가져오기</button></div>
           <div class="blocks" data-blocks="${key}"></div>
           <button type="button" class="addblk" data-add="${key}">＋ 항목 추가</button>`;
         fc.appendChild(div);
+        div.querySelector(".fac-import").addEventListener("click", (ev) => importPrevFacility(key, label, ev.currentTarget));
         div.querySelector(".addblk").addEventListener("click", () => {
           models[key].push(emptyBlock()); touched.add(key);
           renderBlocks(key); scheduleAutoSave();
@@ -718,32 +718,27 @@
     });
     window.addEventListener("appinstalled", () => { installBtn.style.display = "none"; });
 
-    // 📋 전일 업무 가져오기 — 직전 작성일의 내용을 현재 날짜로 복사(텍스트만, 사진 제외)
-    document.getElementById("importPrev").addEventListener("click", async (e) => {
+    // 📋 전일 가져오기(시설별) — 그 시설이 마지막으로 작성된 날의 내용을 현재 날짜로 복사(사진 제외)
+    async function importPrevFacility(key, label, btn) {
       if (!dateEl.value) { setStatus("날짜를 선택하세요.", "err"); return; }
-      const hasAny = FACILITIES.some(([, k]) => facHas(k));
-      if (hasAny && !confirm("현재 작성 중인 내용을 전일 업무로 덮어씁니다.\n계속할까요? (사진은 복사되지 않습니다)")) return;
-      const btn = e.currentTarget; btn.disabled = true;
-      setStatus("전일 업무 불러오는 중…");
+      if (facHas(key) && !confirm(`「${label}」 현재 내용을 전일 내용으로 덮어씁니다.\n계속할까요? (사진은 복사되지 않습니다)`)) return;
+      if (btn) btn.disabled = true;
+      setStatus(`「${label}」 전일 내용 불러오는 중…`);
       try {
-        const prev = await loadPrevLog(currentOffice, dateEl.value);
-        if (!prev) { setStatus("이전에 작성한 일지가 없어요.", "err"); return; }
-        const c = prev.contents || {};
-        for (const [, key] of FACILITIES) {
-          models[key] = deserializeBlocks(c[key] || "", []); // 사진 제외(빈 배열) → [사진N] 마커 자동 제거
-          touched.add(key);
-          renderBlocks(key);
-        }
-        if (!weatherTouched && !weatherEl.value) { /* 날씨는 그대로 비움 */ }
+        const prev = await loadPrevFacility(currentOffice, dateEl.value, key);
+        if (!prev) { setStatus(`「${label}」 이전 작성 내용이 없어요.`, "err"); return; }
+        models[key] = deserializeBlocks(prev.text, []); // 사진 제외 → [사진N] 마커 자동 제거
+        touched.add(key);
+        renderBlocks(key);
         scheduleAutoSave();
         const [, pm, pd] = prev.log_date.split("-");
-        setStatus(`📋 ${pm}/${pd} 업무를 가져왔어요 (사진 제외) — 수정 후 저장`, "ok");
+        setStatus(`📋 「${label}」 ${pm}/${pd} 내용 가져옴 — 수정 후 저장`, "ok");
       } catch (err) {
         setStatus("가져오기 오류: " + err.message, "err");
       } finally {
-        btn.disabled = false;
+        if (btn) btn.disabled = false;
       }
-    });
+    }
 
     // 수동 저장 버튼 (즉시)
     document.getElementById("save").addEventListener("click", async (e) => {
