@@ -215,6 +215,14 @@
         <div id="thumbs" class="thumbs"></div>
       </details>
 
+      <details class="more">
+        <summary>📎 과거 보고서 첨부 (PDF·HWPX · 자동 압축)</summary>
+        <p style="font-size:.82rem;color:var(--muted);margin:8px 0">과거에 작성한 한글(.hwpx)·PDF 보고서를 올리면 <b>용량을 줄여</b> 저장하고, 본문 <b>텍스트로 검색</b>돼요. (스캔 PDF·구버전 .hwp는 텍스트 추출이 안 될 수 있어요)</p>
+        <input type="file" id="docInput" accept=".pdf,.hwpx,application/pdf" style="margin-top:4px" />
+        <div id="docStatus" style="font-size:.82rem;color:var(--muted);margin-top:8px;min-height:1.1em"></div>
+        <div id="docChip" style="display:none;margin-top:8px;padding:9px 12px;border:1px solid var(--accent-border);background:var(--accent-weak);border-radius:9px;font-size:.86rem;display:none;align-items:center;gap:8px"></div>
+      </details>
+
       <div class="row-btns">
         <button class="primary" id="saveBtn">💾 등록</button>
         <button class="blue" id="reportBtn">📄 장애보고서 다운로드</button>
@@ -231,6 +239,8 @@
     import { OFFICE_LIST, OFFICES } from "./sites.js";
     import { compressImage } from "./photo.js";
     import { uploadPhoto, photoUrl, removePhoto, fetchPhotoBytes } from "./photoStorage.js";
+    import { uploadDoc, docUrl, removeDoc } from "./docStorage.js";
+    // docImport(pdf.js·jsPDF 포함, 무거움)는 실제 업로드 시에만 지연 로드
 
     // 휴대폰 키보드에 없는 특수문자 — 탭하면 커서 위치에 삽입
     const SPECIALS = ["※", "◎", "○", "●", "▣", "■", "▶", "·", "→", "℃", "±", "×", "㎡", "㎥"];
@@ -334,6 +344,7 @@
         const dv = (k, v) => v ? `<div class="dv-field"><div class="k">${k}</div><div class="v">${esc(v)}</div></div>` : "";
         let photosHtml = "";
         if ((c.photos || []).length) photosHtml = `<div class="dv-field"><div class="k">사진 (${c.photos.length}장)</div><div class="thumbs">${c.photos.map((p) => `<img src="${photoUrl(p.path)}" style="width:100%;height:90px;object-fit:cover;border-radius:6px;border:1px solid var(--line)" title="${esc(p.caption || "")}"/>`).join("")}</div></div>`;
+        const docHtml = c.doc_path ? `<div class="dv-field"><div class="k">원본 문서</div><div class="v"><a href="${docUrl(c.doc_path)}" target="_blank" rel="noopener" style="color:var(--accent);font-weight:700;text-decoration:none">📎 ${esc(c.doc_path.split(".").pop().toUpperCase())} 열기</a></div></div>` : "";
         $("dvBody").innerHTML = `
           <div class="dv-meta"><b style="color:var(--accent)">${esc(c.office || "")}</b> · ${esc(c.site || "")} · ${esc(c.equip_type || "")} · ${esc(c.fault_date || "")}</div>
           <div class="dv-field"><div class="k">모델명</div><div class="v" style="font-weight:800;color:var(--accent)">${esc(c.model || "-")}</div></div>
@@ -342,7 +353,7 @@
             ${dv("증상", c.symptom)}${dv("조치", c.action)}${dv("향후계획", c.plan)}
           </div>
           ${dv("세부 1", c.detail1)}${dv("세부 2", c.detail2)}${dv("작성자", c.authors)}
-          ${photosHtml}`;
+          ${docHtml}${photosHtml}`;
         openModal("detailModal");
         setStatus("");
       } catch (e) { alert("불러오기 오류: " + e.message); }
@@ -351,7 +362,7 @@
     $("dvDelete").addEventListener("click", async () => {
       if (!detailCase) return;
       if (!confirm("이 사례를 삭제할까요?")) return;
-      try { await deleteCase(detailCase.id); closeModal("detailModal"); doSearch(); } catch (e) { setStatus("삭제 오류: " + e.message, "err"); }
+      try { if (detailCase.doc_path) { try { await removeDoc(detailCase.doc_path); } catch (e) {} } await deleteCase(detailCase.id); closeModal("detailModal"); doSearch(); } catch (e) { setStatus("삭제 오류: " + e.message, "err"); }
     });
     $("dvReport").addEventListener("click", () => detailCase && downloadReport(detailCase, "dv"));
 
@@ -386,6 +397,39 @@
       }
     });
 
+    // ===== 원본 문서(PDF/HWPX) 첨부 =====
+    let docInfo = null; // {path, text}
+    const fmtSize = (n) => n < 1024 * 1024 ? (n / 1024).toFixed(0) + "KB" : (n / 1024 / 1024).toFixed(1) + "MB";
+    function renderDocChip() {
+      const chip = $("docChip");
+      if (!docInfo || !docInfo.path) { chip.style.display = "none"; chip.innerHTML = ""; return; }
+      const ext = docInfo.path.split(".").pop().toUpperCase();
+      chip.style.display = "flex";
+      chip.innerHTML = `<span>📎</span><a href="${docUrl(docInfo.path)}" target="_blank" rel="noopener" style="color:var(--accent);font-weight:700;text-decoration:none">첨부된 ${ext} 열기</a><button type="button" id="docRemove" style="margin-left:auto;background:var(--surface);border:1px solid var(--line-strong);border-radius:7px;padding:4px 9px;cursor:pointer;font-size:.78rem">제거</button>`;
+      chip.querySelector("#docRemove").addEventListener("click", async () => {
+        try { if (docInfo.path) await removeDoc(docInfo.path); } catch (e) {}
+        docInfo = null; renderDocChip(); $("docStatus").textContent = "";
+      });
+    }
+    $("docInput").addEventListener("change", async (e) => {
+      const f = e.target.files[0]; e.target.value = "";
+      if (!f) return;
+      const orig = f.size;
+      $("docStatus").textContent = "압축·업로드 중… (사진이 많으면 잠시 걸려요)";
+      try {
+        if (docInfo && docInfo.path) { try { await removeDoc(docInfo.path); } catch (e) {} }
+        const { compressDoc } = await import("./docImport.js");
+        const r = await compressDoc(f);
+        const path = `fault/doc_${Date.now()}.${r.ext}`;
+        await uploadDoc(path, r.blob, r.contentType);
+        docInfo = { path, text: r.text || "" };
+        renderDocChip();
+        $("docStatus").innerHTML = `✅ ${fmtSize(orig)} → <b>${fmtSize(r.blob.size)}</b>로 저장됨` + (r.text ? " · 본문 검색 가능" : " · (텍스트 추출 안 됨 — 모델·증상 입력 권장)");
+      } catch (err) {
+        $("docStatus").innerHTML = `<span style="color:var(--danger)">첨부 실패: ${esc(err.message)}</span>`;
+      }
+    });
+
     function readForm() { const c = {}; for (const f of FORM_FIELDS) c[f] = $(f).value || null; return c; }
     function clearForm() {
       currentId = null;
@@ -394,6 +438,7 @@
       $("dept").value = deptDefault($("office").value);
       { const d = new Date(); $("fault_date").value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; }
       photos = []; renderThumbs();
+      docInfo = null; renderDocChip(); $("docStatus").textContent = "";
       $("formTitle").textContent = "➕ 새 사례 등록"; $("saveBtn").textContent = "💾 등록"; $("delBtn").style.display = "none";
       setFStatus("");
     }
@@ -406,6 +451,7 @@
       if (!$("dept").value.trim()) $("dept").value = deptDefault($("office").value);
       photos = (c.photos || []).map((p) => ({ id: ++photoSeq, caption: p.caption || "", path: p.path, w: p.w, h: p.h, url: photoUrl(p.path) }));
       renderThumbs();
+      docInfo = c.doc_path ? { path: c.doc_path, text: c.doc_text || "" } : null; renderDocChip(); $("docStatus").textContent = "";
       $("formTitle").textContent = "✏️ 사례 수정"; $("saveBtn").textContent = "💾 수정 저장"; $("delBtn").style.display = "";
       setFStatus(""); openModal("formModal");
     }
@@ -417,6 +463,8 @@
       if (!c.office || !c.site) { setFStatus("소속국·송신소를 선택하세요.", "err"); return; }
       c.title = autoTitle(c);
       c.photos = photos.filter((p) => p.path).map((p) => ({ path: p.path, caption: p.caption || "", w: p.w, h: p.h }));
+      c.doc_path = docInfo && docInfo.path ? docInfo.path : null;
+      c.doc_text = docInfo && docInfo.text ? docInfo.text : null;
       e.currentTarget.disabled = true; setFStatus("저장 중…");
       try {
         if (currentId) { await updateCase(currentId, c); setFStatus(`✅ #${currentId} 수정 완료`, "ok"); }
@@ -427,7 +475,7 @@
     });
     $("delBtn").addEventListener("click", async () => {
       if (!currentId || !confirm("이 사례를 삭제할까요?")) return;
-      try { await deleteCase(currentId); closeModal("formModal"); doSearch(); } catch (e) { setFStatus("삭제 오류: " + e.message, "err"); }
+      try { if (docInfo && docInfo.path) { try { await removeDoc(docInfo.path); } catch (e) {} } await deleteCase(currentId); closeModal("formModal"); doSearch(); } catch (e) { setFStatus("삭제 오류: " + e.message, "err"); }
     });
     $("reportBtn").addEventListener("click", () => { const c = readForm(); c.id = currentId; c.photos = photos; downloadReport(c, "form"); });
 

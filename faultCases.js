@@ -47,7 +47,7 @@ export async function searchCases({ q, office, site, equip_type } = {}) {
   if (equip_type) query = query.ilike("equip_type", `%${equip_type}%`);
   if (q && q.trim()) {
     const kw = q.trim().replace(/[%,]/g, " ");
-    query = query.or(`model.ilike.%${kw}%,symptom.ilike.%${kw}%,equipment.ilike.%${kw}%`);
+    query = query.or(`model.ilike.%${kw}%,symptom.ilike.%${kw}%,equipment.ilike.%${kw}%,doc_text.ilike.%${kw}%`);
   }
   const { data, error } = await query;
   if (error) throw error;
