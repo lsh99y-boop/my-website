@@ -24,6 +24,21 @@ export async function getCase(id) {
   if (error) throw error;
   return data;
 }
+// 통계용: 집계에 필요한 컬럼만, 기간/국 필터
+export async function statsCases({ office, from, to } = {}) {
+  let query = supabase
+    .from("fault_cases")
+    .select("office, site, equip_type, model, symptom, fault_date")
+    .order("fault_date", { ascending: false })
+    .limit(5000);
+  if (office) query = query.eq("office", office);
+  if (from) query = query.gte("fault_date", from);
+  if (to) query = query.lte("fault_date", to);
+  const { data, error } = await query;
+  if (error) throw error;
+  return data || [];
+}
+
 // 검색: q(모델명·증상) + 필터(office/site/equip_type)
 export async function searchCases({ q, office, site, equip_type } = {}) {
   let query = supabase.from("fault_cases").select("*").order("fault_date", { ascending: false }).limit(200);

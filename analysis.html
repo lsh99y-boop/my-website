@@ -1,0 +1,262 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>데이터 분석</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+  <script>try{var t=localStorage.getItem("ilji_theme");if(t)document.documentElement.setAttribute("data-theme",t);}catch(e){}</script>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <meta name="theme-color" content="#4f46e5" />
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+  <link rel="icon" href="icons/favicon-32.png" sizes="32x32" />
+  <script>if("serviceWorker" in navigator){window.addEventListener("load",function(){navigator.serviceWorker.register("sw.js").catch(function(){});});}</script>
+  <style>
+    :root {
+      --bg:#f4f5f8; --surface:#ffffff; --surface-2:#f5f6f9; --line:#e7e9ef; --line-strong:#d8dbe3;
+      --ink:#1b1f2a; --muted:#6b7280;
+      --accent:#4f46e5; --accent-ink:#ffffff; --accent-weak:#eef0fe; --accent-border:#dadcfb;
+      --green:#16a34a; --amber:#c77905; --danger:#dc2626;
+      --c1:#4f46e5; --c2:#0ea5e9; --c3:#16a34a; --c4:#f59e0b; --c5:#ec4899; --c6:#8b5cf6;
+      --shadow-sm:0 1px 2px rgba(16,24,40,.05); --shadow:0 2px 4px rgba(16,24,40,.04), 0 10px 24px rgba(16,24,40,.07);
+      --radius:14px;
+    }
+    @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+      --bg:#0e131c; --surface:#161c28; --surface-2:#1e2532; --line:#2a3342; --line-strong:#3a4455;
+      --ink:#e6e9f0; --muted:#96a1b4;
+      --accent:#818cf8; --accent-ink:#0e131c; --accent-weak:#232b45; --accent-border:#3a4468;
+      --green:#4ade80; --amber:#fbbf24; --danger:#f87171;
+      --c1:#818cf8; --c2:#38bdf8; --c3:#4ade80; --c4:#fbbf24; --c5:#f472b6; --c6:#a78bfa;
+      --shadow-sm:0 1px 2px rgba(0,0,0,.4); --shadow:0 2px 6px rgba(0,0,0,.35), 0 12px 30px rgba(0,0,0,.42);
+    } }
+    :root[data-theme="dark"] {
+      --bg:#0e131c; --surface:#161c28; --surface-2:#1e2532; --line:#2a3342; --line-strong:#3a4455;
+      --ink:#e6e9f0; --muted:#96a1b4;
+      --accent:#818cf8; --accent-ink:#0e131c; --accent-weak:#232b45; --accent-border:#3a4468;
+      --green:#4ade80; --amber:#fbbf24; --danger:#f87171;
+      --c1:#818cf8; --c2:#38bdf8; --c3:#4ade80; --c4:#fbbf24; --c5:#f472b6; --c6:#a78bfa;
+      --shadow-sm:0 1px 2px rgba(0,0,0,.4); --shadow:0 2px 6px rgba(0,0,0,.35), 0 12px 30px rgba(0,0,0,.42);
+    }
+    * { box-sizing: border-box; }
+    body { font-family:"Pretendard Variable",Pretendard,system-ui,"Malgun Gothic",sans-serif; margin:0; background:var(--bg); color:var(--ink); -webkit-font-smoothing:antialiased; }
+
+    .topbar { position:sticky; top:0; z-index:50; background:var(--surface); border-bottom:1px solid var(--line); box-shadow:var(--shadow-sm); }
+    .topbar-inner { max-width:1100px; margin:0 auto; padding:11px 18px; display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+    .brand { font-weight:800; font-size:1.05rem; letter-spacing:-.01em; }
+    .tb-actions { margin-left:auto; display:flex; gap:8px; align-items:center; }
+    .tb-btn { color:var(--accent); background:var(--surface); text-decoration:none; font-weight:600; font-size:.84rem; white-space:nowrap; border:1px solid var(--accent-border); border-radius:9px; padding:8px 12px; cursor:pointer; }
+    .tb-btn:hover { background:var(--accent-weak); }
+    .icon-btn { padding:8px 10px; font-size:1rem; line-height:1; }
+
+    main { max-width:1100px; margin:18px auto; padding:0 16px 70px; }
+    .filters { display:flex; gap:10px; flex-wrap:wrap; align-items:end; margin-bottom:16px; }
+    .fld { display:flex; flex-direction:column; gap:3px; }
+    .fld label { font-size:.72rem; color:var(--muted); font-weight:700; }
+    select { font:inherit; color:var(--ink); border:1px solid var(--line-strong); border-radius:8px; padding:8px 10px; background:var(--surface); min-width:120px; }
+
+    .cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; margin-bottom:18px; }
+    .kpi { background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:15px 16px; box-shadow:var(--shadow-sm); }
+    .kpi .k { font-size:.76rem; color:var(--muted); font-weight:700; }
+    .kpi .v { font-size:1.5rem; font-weight:800; margin-top:5px; letter-spacing:-.02em; }
+    .kpi .v small { font-size:.86rem; font-weight:700; color:var(--muted); }
+    .kpi .v.accent { color:var(--accent); }
+
+    .grid2 { display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:16px; }
+    .card { background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:16px 18px; box-shadow:var(--shadow-sm); }
+    .card h2 { font-size:1rem; margin:0 0 4px; }
+    .card .sub { font-size:.76rem; color:var(--muted); margin-bottom:12px; }
+
+    /* 가로 막대 */
+    .bars { display:flex; flex-direction:column; gap:9px; }
+    .barrow { display:flex; align-items:center; gap:9px; font-size:.86rem; }
+    .barlabel { width:90px; flex:none; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-align:right; color:var(--ink); }
+    .bartrack { flex:1; background:var(--surface-2); border-radius:6px; height:20px; overflow:hidden; }
+    .barfill { height:100%; border-radius:6px; min-width:2px; transition:width .3s; }
+    .barval { width:34px; flex:none; text-align:right; font-weight:700; font-variant-numeric:tabular-nums; }
+
+    /* 월별 세로 막대 */
+    .months { display:flex; align-items:flex-end; gap:5px; height:150px; padding-top:6px; }
+    .mcol { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; gap:4px; min-width:0; height:100%; }
+    .mbar { width:70%; max-width:26px; background:var(--accent); border-radius:5px 5px 0 0; min-height:2px; transition:height .3s; }
+    .mcap { font-size:.62rem; color:var(--muted); white-space:nowrap; }
+    .mnum { font-size:.66rem; font-weight:700; }
+
+    .empty { color:var(--muted); text-align:center; padding:22px 8px; font-size:.92rem; }
+    .note { font-size:.8rem; color:var(--muted); margin-top:14px; text-align:center; }
+    #status { font-size:.85rem; color:var(--muted); margin:10px 2px; min-height:1.1em; }
+    #status.err { color:var(--danger); }
+  </style>
+</head>
+<body>
+  <div id="pinGate" style="position:fixed;inset:0;background:#0e1420;z-index:9999;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px;color:#e6ebf2;padding:20px;text-align:center">
+    <div style="font-size:1.3rem;font-weight:700">📊 데이터 분석</div>
+    <div style="color:#8a94a3;font-size:.9rem">접속 PIN을 입력하세요</div>
+    <input id="pinInput" type="password" inputmode="numeric" maxlength="12" placeholder="PIN"
+           style="font-size:1.4rem;text-align:center;letter-spacing:.25em;padding:10px 16px;border-radius:8px;border:1px solid #2a3550;background:#182130;color:#fff;width:200px" />
+    <button id="pinOk" style="background:#2f6fed;color:#fff;padding:11px 28px;font-size:1rem;border:0;border-radius:8px;cursor:pointer">확인</button>
+    <div id="pinErr" style="color:#ff6b6b;font-size:.85rem;height:1.1em"></div>
+  </div>
+
+  <div class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">📊 데이터 분석 <span style="font-weight:400;color:var(--muted);font-size:.8rem">· 정비사례 통계</span></div>
+      <div class="tb-actions">
+        <a class="tb-btn" href="index.html">🏠 홈</a>
+        <a class="tb-btn" href="cases.html">🔧 정비사례</a>
+        <button class="tb-btn icon-btn" id="themeToggle" title="라이트/다크 전환">🌙</button>
+      </div>
+    </div>
+  </div>
+
+  <main>
+    <div class="filters">
+      <div class="fld"><label>소속국</label><select id="fOffice"></select></div>
+      <div class="fld"><label>기간</label><select id="fPeriod">
+        <option value="all">전체 기간</option>
+        <option value="year">올해</option>
+        <option value="12m">최근 12개월</option>
+      </select></div>
+    </div>
+
+    <div id="status">불러오는 중…</div>
+
+    <div class="cards" id="kpis"></div>
+
+    <div class="grid2">
+      <div class="card"><h2>🔧 모델별 고장 TOP</h2><div class="sub">어떤 모델이 자주 고장나는지</div><div class="bars" id="byModel"></div></div>
+      <div class="card"><h2>📍 시설(송신소)별</h2><div class="sub">고장·정비가 많은 시설</div><div class="bars" id="bySite"></div></div>
+      <div class="card"><h2>🖥️ 장비 종류별</h2><div class="sub">송신기·엑사이터·중계기 등</div><div class="bars" id="byEquip"></div></div>
+      <div class="card"><h2>💬 증상 키워드 TOP</h2><div class="sub">자주 나오는 증상 단어(자동 추출)</div><div class="bars" id="bySymptom"></div></div>
+      <div class="card" style="grid-column:1/-1"><h2>📈 월별 추세</h2><div class="sub">최근 12개월 고장·정비 건수</div><div class="months" id="byMonth"></div></div>
+    </div>
+
+    <div class="note">※ 정비사례에 등록된 데이터를 집계합니다. 데이터가 쌓일수록 패턴이 뚜렷해져요. (일지 분석은 추후 추가 예정)</div>
+  </main>
+
+  <script type="module">
+    import { statsCases } from "./faultCases.js";
+    import { OFFICE_LIST } from "./sites.js";
+
+    const APP_PIN = "7590";
+    (function () {
+      const gate = document.getElementById("pinGate");
+      if (localStorage.getItem("ilji_pin_ok") === APP_PIN) { gate.remove(); return; }
+      const inp = document.getElementById("pinInput"), err = document.getElementById("pinErr");
+      const go = () => { if (inp.value === APP_PIN) { localStorage.setItem("ilji_pin_ok", APP_PIN); gate.remove(); load(); } else { err.textContent = "PIN이 틀렸어요"; inp.value = ""; inp.focus(); } };
+      document.getElementById("pinOk").addEventListener("click", go);
+      inp.addEventListener("keydown", (e) => { if (e.key === "Enter") go(); });
+      inp.focus();
+    })();
+
+    // 다크 토글
+    const tbtn = document.getElementById("themeToggle");
+    function paint(t) { const r = document.documentElement; if (t) r.setAttribute("data-theme", t); else r.removeAttribute("data-theme"); tbtn.textContent = (t ? t === "dark" : matchMedia("(prefers-color-scheme: dark)").matches) ? "☀️" : "🌙"; }
+    paint(localStorage.getItem("ilji_theme"));
+    tbtn.addEventListener("click", () => { const r = document.documentElement; const cur = r.getAttribute("data-theme") || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"); const nx = cur === "dark" ? "light" : "dark"; localStorage.setItem("ilji_theme", nx); paint(nx); });
+
+    const $ = (id) => document.getElementById(id);
+    $("fOffice").innerHTML = `<option value="">전국 전체</option>` + OFFICE_LIST.map((o) => `<option>${o}</option>`).join("");
+    const setStatus = (m, err) => { const s = $("status"); s.textContent = m || ""; s.className = err ? "err" : ""; };
+    const COLORS = ["--c1", "--c2", "--c3", "--c4", "--c5", "--c6"];
+
+    // 집계
+    function tally(rows, keyFn) {
+      const m = new Map();
+      for (const r of rows) { const k = keyFn(r); if (!k) continue; m.set(k, (m.get(k) || 0) + 1); }
+      return [...m.entries()].sort((a, b) => b[1] - a[1]);
+    }
+    const STOP = new Set(["및","등","것","이상","발생","현상","상태","점검","확인","이","그","저","수","때","중","후","전","합니다","했다","됨","함","시","분","약","또는","관련","부분","동작","문제"]);
+    function symptomWords(rows) {
+      const m = new Map();
+      for (const r of rows) {
+        const txt = (r.symptom || "").replace(/[^가-힣a-zA-Z0-9]+/g, " ");
+        for (let w of txt.split(/\s+/)) {
+          w = w.trim(); if (w.length < 2 || STOP.has(w) || /^\d+$/.test(w)) continue;
+          m.set(w, (m.get(w) || 0) + 1);
+        }
+      }
+      return [...m.entries()].filter(([, c]) => c >= 2).sort((a, b) => b[1] - a[1]);
+    }
+
+    function renderBars(elId, pairs, colorVar) {
+      const el = $(elId);
+      if (!pairs.length) { el.innerHTML = `<div class="empty">데이터 없음</div>`; return; }
+      const top = pairs.slice(0, 8);
+      const max = top[0][1] || 1;
+      el.innerHTML = top.map(([label, cnt], i) => {
+        const col = colorVar || COLORS[i % COLORS.length];
+        const w = Math.max(3, Math.round(cnt / max * 100));
+        return `<div class="barrow"><div class="barlabel" title="${esc(label)}">${esc(label)}</div>
+          <div class="bartrack"><div class="barfill" style="width:${w}%;background:var(${col})"></div></div>
+          <div class="barval">${cnt}</div></div>`;
+      }).join("");
+    }
+    function renderMonths(rows) {
+      const el = $("byMonth");
+      const now = new Date();
+      const keys = [];
+      for (let i = 11; i >= 0; i--) { const d = new Date(now.getFullYear(), now.getMonth() - i, 1); keys.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`); }
+      const cnt = Object.fromEntries(keys.map((k) => [k, 0]));
+      for (const r of rows) { const k = (r.fault_date || "").slice(0, 7); if (k in cnt) cnt[k]++; }
+      const max = Math.max(1, ...keys.map((k) => cnt[k]));
+      el.innerHTML = keys.map((k) => {
+        const c = cnt[k]; const h = Math.round(c / max * 100);
+        const mm = k.slice(5);
+        return `<div class="mcol"><div class="mnum">${c || ""}</div><div class="mbar" style="height:${h}%"></div><div class="mcap">${mm}월</div></div>`;
+      }).join("");
+    }
+    function esc(s) { return (s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;"); }
+
+    function renderKpis(rows) {
+      const byModel = tally(rows, (r) => (r.model || "").trim());
+      const bySite = tally(rows, (r) => (r.site || "").trim());
+      const thisYear = new Date().getFullYear();
+      const yearCnt = rows.filter((r) => (r.fault_date || "").startsWith(String(thisYear))).length;
+      const cards = [
+        { k: "총 사례", v: rows.length + "<small>건</small>" },
+        { k: `${thisYear}년`, v: yearCnt + "<small>건</small>" },
+        { k: "TOP 모델", v: byModel[0] ? `${esc(byModel[0][0])} <small>${byModel[0][1]}건</small>` : "—", accent: true },
+        { k: "TOP 시설", v: bySite[0] ? `${esc(bySite[0][0])} <small>${bySite[0][1]}건</small>` : "—", accent: true },
+      ];
+      $("kpis").innerHTML = cards.map((c) => `<div class="kpi"><div class="k">${c.k}</div><div class="v${c.accent ? " accent" : ""}">${c.v}</div></div>`).join("");
+    }
+
+    function periodRange() {
+      const p = $("fPeriod").value;
+      const now = new Date();
+      const fmt = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      if (p === "year") return { from: `${now.getFullYear()}-01-01` };
+      if (p === "12m") { const d = new Date(now.getFullYear(), now.getMonth() - 11, 1); return { from: fmt(d) }; }
+      return {};
+    }
+
+    async function load() {
+      setStatus("불러오는 중…");
+      try {
+        const office = $("fOffice").value || undefined;
+        const rows = await statsCases({ office, ...periodRange() });
+        if (!rows.length) {
+          setStatus("");
+          $("kpis").innerHTML = "";
+          ["byModel", "bySite", "byEquip", "bySymptom"].forEach((id) => $(id).innerHTML = `<div class="empty">등록된 정비사례가 없어요</div>`);
+          $("byMonth").innerHTML = `<div class="empty" style="margin:auto">데이터 없음</div>`;
+          return;
+        }
+        setStatus(`총 ${rows.length}건 분석`);
+        renderKpis(rows);
+        renderBars("byModel", tally(rows, (r) => (r.model || "").trim()));
+        renderBars("bySite", tally(rows, (r) => (r.site || "").trim()), "--c2");
+        renderBars("byEquip", tally(rows, (r) => (r.equip_type || "").trim()), "--c3");
+        renderBars("bySymptom", symptomWords(rows), "--c5");
+        renderMonths(rows);
+      } catch (e) {
+        setStatus("불러오기 오류: " + e.message + " (fault_cases 테이블 확인)", true);
+      }
+    }
+
+    $("fOffice").addEventListener("change", load);
+    $("fPeriod").addEventListener("change", load);
+    if (localStorage.getItem("ilji_pin_ok") === APP_PIN) load();
+  </script>
+</body>
+</html>
