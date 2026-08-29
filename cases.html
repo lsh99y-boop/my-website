@@ -186,6 +186,14 @@
         <div><label>날짜</label><input type="date" id="fault_date" /></div>
       </div>
 
+      <details class="more" open>
+        <summary>📎 과거 보고서 첨부 (PDF·HWPX · 자동 압축)</summary>
+        <p style="font-size:.82rem;color:var(--muted);margin:8px 0">과거에 작성한 한글(.hwpx)·PDF 보고서를 올리면 <b>용량을 줄여</b> 저장하고, 본문 <b>텍스트로 검색</b>돼요. (스캔 PDF·구버전 .hwp는 텍스트 추출이 안 될 수 있어요)</p>
+        <input type="file" id="docInput" accept=".pdf,.hwpx,application/pdf" style="margin-top:4px" />
+        <div id="docStatus" style="font-size:.82rem;color:var(--muted);margin-top:8px;min-height:1.1em"></div>
+        <div id="docChip" style="display:none;margin-top:8px;padding:9px 12px;border:1px solid var(--accent-border);background:var(--accent-weak);border-radius:9px;font-size:.86rem;align-items:center;gap:8px"></div>
+      </details>
+
       <div class="section-title">핵심 내용</div>
       <div class="core">
         <div style="margin-bottom:10px"><label>증상 ★</label><textarea id="symptom" placeholder="고장·이상 증상 (검색됨)"></textarea></div>
@@ -213,14 +221,6 @@
         </div>
         <input type="file" id="photoInput" accept="image/*" multiple style="margin-top:10px" />
         <div id="thumbs" class="thumbs"></div>
-      </details>
-
-      <details class="more">
-        <summary>📎 과거 보고서 첨부 (PDF·HWPX · 자동 압축)</summary>
-        <p style="font-size:.82rem;color:var(--muted);margin:8px 0">과거에 작성한 한글(.hwpx)·PDF 보고서를 올리면 <b>용량을 줄여</b> 저장하고, 본문 <b>텍스트로 검색</b>돼요. (스캔 PDF·구버전 .hwp는 텍스트 추출이 안 될 수 있어요)</p>
-        <input type="file" id="docInput" accept=".pdf,.hwpx,application/pdf" style="margin-top:4px" />
-        <div id="docStatus" style="font-size:.82rem;color:var(--muted);margin-top:8px;min-height:1.1em"></div>
-        <div id="docChip" style="display:none;margin-top:8px;padding:9px 12px;border:1px solid var(--accent-border);background:var(--accent-weak);border-radius:9px;font-size:.86rem;display:none;align-items:center;gap:8px"></div>
       </details>
 
       <div class="row-btns">
