@@ -85,6 +85,23 @@
     .mcap { font-size:.62rem; color:var(--muted); white-space:nowrap; }
     .mnum { font-size:.66rem; font-weight:700; }
 
+    /* 소량 데이터 배너 */
+    .databanner { background:color-mix(in srgb, var(--amber) 14%, var(--surface)); border:1px solid var(--amber); color:var(--amber); border-radius:12px; padding:11px 14px; font-size:.86rem; margin-bottom:16px; line-height:1.5; }
+    /* 위험도 표 */
+    .rtable { width:100%; border-collapse:collapse; font-size:.88rem; }
+    .rtable th, .rtable td { padding:9px 10px; text-align:left; border-bottom:1px solid var(--line); white-space:nowrap; }
+    .rtable th { color:var(--muted); font-weight:700; font-size:.74rem; }
+    .rtable td.num { font-variant-numeric:tabular-nums; }
+    .risk { font-size:.74rem; font-weight:800; padding:2px 10px; border-radius:20px; }
+    .risk.high { background:color-mix(in srgb, var(--danger) 16%, var(--surface)); color:var(--danger); }
+    .risk.mid { background:color-mix(in srgb, var(--amber) 18%, var(--surface)); color:var(--amber); }
+    .risk.low { background:var(--surface-2); color:var(--muted); }
+    /* 반복 고장 목록 */
+    .replist { display:flex; flex-direction:column; gap:8px; }
+    .reprow { display:flex; align-items:center; gap:10px; padding:9px 12px; border:1px solid var(--line); border-radius:10px; font-size:.9rem; }
+    .reprow .rc { margin-left:auto; font-weight:800; color:var(--danger); white-space:nowrap; }
+    .tablewrap { overflow-x:auto; }
+
     /* 문제 언급 목록 */
     .logrow { border:1px solid var(--line); border-radius:10px; padding:10px 13px; margin-top:8px; }
     .lr-top { display:flex; gap:6px; align-items:center; font-size:.76rem; color:var(--muted); }
@@ -137,13 +154,16 @@
 
     <!-- 정비사례 탭 -->
     <div id="tabFault">
+      <div id="dataBanner" class="databanner" style="display:none"></div>
       <div class="cards" id="kpis"></div>
       <div class="grid2">
-        <div class="card"><h2>🔧 모델별 고장 TOP</h2><div class="sub">어떤 모델이 자주 고장나는지</div><div class="bars" id="byModel"></div></div>
-        <div class="card"><h2>📍 시설(송신소)별</h2><div class="sub">고장·정비가 많은 시설</div><div class="bars" id="bySite"></div></div>
+        <div class="card"><h2>🔩 고장 부위·원인별</h2><div class="sub">증상·조치 내용에서 자동 분류</div><div class="bars" id="byCause"></div></div>
+        <div class="card"><h2>📍 시설(송신소)별 건수</h2><div class="sub">고장·정비가 많은 시설</div><div class="bars" id="bySite"></div></div>
+        <div class="card"><h2>🔧 모델별 건수</h2><div class="sub">어떤 모델이 자주 고장나는지</div><div class="bars" id="byModel"></div></div>
         <div class="card"><h2>🖥️ 장비 종류별</h2><div class="sub">송신기·엑사이터·중계기 등</div><div class="bars" id="byEquip"></div></div>
-        <div class="card"><h2>💬 증상 키워드 TOP</h2><div class="sub">자주 나오는 증상 단어(자동 추출)</div><div class="bars" id="bySymptom"></div></div>
         <div class="card" style="grid-column:1/-1"><h2>📈 월별 추세</h2><div class="sub">최근 12개월 고장·정비 건수</div><div class="months" id="byMonth"></div></div>
+        <div class="card" style="grid-column:1/-1"><h2>🔁 반복 고장</h2><div class="sub">같은 시설 + 같은 모델에서 2건 이상 — 근본 원인 점검 대상</div><div class="replist" id="repeat"></div></div>
+        <div class="card" style="grid-column:1/-1"><h2>🚦 시설별 위험도</h2><div class="sub">고장 건수·반복 여부로 산정</div><div class="tablewrap"><table class="rtable" id="riskTable"></table></div></div>
       </div>
     </div>
 
@@ -206,6 +226,75 @@
       return [...m.entries()].filter(([, c]) => c >= 2).sort((a, b) => b[1] - a[1]);
     }
 
+    // 고장 부위·원인 자동 분류 (증상·조치·모델 텍스트 기준)
+    const CAUSES = [
+      ["엑사이터", /(엑사이터|여자기|exciter)/i],
+      ["전원·UPS", /(전원|정전|ups|전압|전류|배터리|정류|smps|파워서플라이|누전|차단기|과전압|과전류)/i],
+      ["냉각·과열", /(냉각|쿨링|팬|과열|온도|호스|누수|냉방|방열|열화)/i],
+      ["출력·증폭", /(출력저하|출력|파워|증폭|앰프|드라이브|반사|vswr)/i],
+      ["제어·기판", /(제어|컨트롤|보드|기판|카드|모듈|펌웨어|소프트|프로그램|릴레이)/i],
+      ["GPS·동기", /(gps|동기|기준신호|레퍼런스|주파수)/i],
+      ["안테나·급전", /(안테나|급전|필터|콤바이너|도파관|커넥터|피더)/i],
+    ];
+    function tallyCause(rows) {
+      const m = new Map(CAUSES.map(([n]) => [n, 0]));
+      let etc = 0;
+      for (const r of rows) {
+        const txt = [r.symptom, r.action, r.model, r.equipment, r.equip_type].filter(Boolean).join(" ");
+        let matched = false;
+        for (const [n, re] of CAUSES) if (re.test(txt)) { m.set(n, m.get(n) + 1); matched = true; }
+        if (!matched) etc++;
+      }
+      const arr = [...m.entries()].filter(([, c]) => c > 0).sort((a, b) => b[1] - a[1]);
+      if (etc) arr.push(["기타·미분류", etc]);
+      return arr;
+    }
+    // 반복 고장: 같은 시설+모델 2건 이상
+    function repeatFaults(rows) {
+      const m = new Map();
+      for (const r of rows) {
+        const site = (r.site || "").trim(), model = (r.model || r.equip_type || "").trim();
+        if (!site || !model) continue;
+        const k = site + " ⋅ " + model;
+        m.set(k, (m.get(k) || 0) + 1);
+      }
+      return [...m.entries()].filter(([, c]) => c >= 2).sort((a, b) => b[1] - a[1]);
+    }
+    // 시설별 위험도
+    function siteRisk(rows) {
+      const sites = new Map();
+      for (const r of rows) {
+        const s = (r.site || "").trim(); if (!s) continue;
+        if (!sites.has(s)) sites.set(s, { count: 0, models: new Map(), equips: new Map() });
+        const o = sites.get(s); o.count++;
+        const model = (r.model || "").trim(); if (model) o.models.set(model, (o.models.get(model) || 0) + 1);
+        const eq = (r.equip_type || "").trim(); if (eq) o.equips.set(eq, (o.equips.get(eq) || 0) + 1);
+      }
+      const out = [];
+      for (const [s, o] of sites) {
+        const topEquip = [...o.equips.entries()].sort((a, b) => b[1] - a[1])[0];
+        const repeatModels = [...o.models.values()].filter((c) => c >= 2).length;
+        const maxModel = Math.max(0, ...o.models.values());
+        let risk = "낮음", cls = "low";
+        if (o.count >= 5 || maxModel >= 3) { risk = "높음"; cls = "high"; }
+        else if (o.count >= 2 || repeatModels >= 1) { risk = "보통"; cls = "mid"; }
+        out.push({ site: s, count: o.count, equip: topEquip ? topEquip[0] : "—", repeat: repeatModels, risk, cls });
+      }
+      out.sort((a, b) => b.count - a.count);
+      return out;
+    }
+    function renderRepeat(pairs) {
+      const el = $("repeat");
+      if (!pairs.length) { el.innerHTML = `<div class="empty">아직 반복 고장이 없어요 (같은 시설·모델 2건 이상 시 표시)</div>`; return; }
+      el.innerHTML = pairs.map(([k, c]) => `<div class="reprow"><span>${esc(k)}</span><span class="rc">${c}건 반복</span></div>`).join("");
+    }
+    function renderRisk(list) {
+      const el = $("riskTable");
+      if (!list.length) { el.innerHTML = `<tbody><tr><td class="empty">데이터 없음</td></tr></tbody>`; return; }
+      el.innerHTML = `<thead><tr><th>시설</th><th>고장</th><th>주요 장비</th><th>반복</th><th>위험도</th></tr></thead><tbody>` +
+        list.map((r) => `<tr><td>${esc(r.site)}</td><td class="num">${r.count}건</td><td>${esc(r.equip)}</td><td class="num">${r.repeat ? r.repeat + "종" : "-"}</td><td><span class="risk ${r.cls}">${r.risk}</span></td></tr>`).join("") + `</tbody>`;
+    }
+
     function renderBars(elId, pairs, colorVar) {
       const el = $(elId);
       if (!pairs.length) { el.innerHTML = `<div class="empty">데이터 없음</div>`; return; }
@@ -236,15 +325,15 @@
     function esc(s) { return (s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;"); }
 
     function renderKpis(rows) {
-      const byModel = tally(rows, (r) => (r.model || "").trim());
-      const bySite = tally(rows, (r) => (r.site || "").trim());
       const thisYear = new Date().getFullYear();
       const yearCnt = rows.filter((r) => (r.fault_date || "").startsWith(String(thisYear))).length;
+      const siteCount = new Set(rows.map((r) => (r.site || "").trim()).filter(Boolean)).size;
+      const repeatCnt = repeatFaults(rows).length;
       const cards = [
-        { k: "총 사례", v: rows.length + "<small>건</small>" },
+        { k: "총 정비사례", v: rows.length + "<small>건</small>" },
         { k: `${thisYear}년`, v: yearCnt + "<small>건</small>" },
-        { k: "TOP 모델", v: byModel[0] ? `${esc(byModel[0][0])} <small>${byModel[0][1]}건</small>` : "—", accent: true },
-        { k: "TOP 시설", v: bySite[0] ? `${esc(bySite[0][0])} <small>${bySite[0][1]}건</small>` : "—", accent: true },
+        { k: "관련 시설", v: siteCount + "<small>곳</small>" },
+        { k: "반복 고장", v: repeatCnt + "<small>건</small>", accent: true },
       ];
       $("kpis").innerHTML = cards.map((c) => `<div class="kpi"><div class="k">${c.k}</div><div class="v${c.accent ? " accent" : ""}">${c.v}</div></div>`).join("");
     }
@@ -264,20 +353,29 @@
       try {
         const office = $("fOffice").value || undefined;
         const rows = await statsCases({ office, ...periodRange() });
+        const banner = $("dataBanner");
+        if (rows.length && rows.length < 10) {
+          banner.style.display = "";
+          banner.innerHTML = `⚠️ 현재 <b>${rows.length}건</b> — 통계는 <b>참고용</b>이에요. 사례가 <b>10건 이상</b> 쌓이면 모델·시설·원인 패턴이 뚜렷해집니다. 지금은 "분포"로만 보세요.`;
+        } else banner.style.display = "none";
         if (!rows.length) {
           setStatus("");
           $("kpis").innerHTML = "";
-          ["byModel", "bySite", "byEquip", "bySymptom"].forEach((id) => $(id).innerHTML = `<div class="empty">등록된 정비사례가 없어요</div>`);
+          ["byCause", "bySite", "byModel", "byEquip"].forEach((id) => $(id).innerHTML = `<div class="empty">등록된 정비사례가 없어요</div>`);
           $("byMonth").innerHTML = `<div class="empty" style="margin:auto">데이터 없음</div>`;
+          $("repeat").innerHTML = `<div class="empty">데이터 없음</div>`;
+          $("riskTable").innerHTML = "";
           return;
         }
         setStatus(`정비사례 ${rows.length}건 분석`);
         renderKpis(rows);
-        renderBars("byModel", tally(rows, (r) => (r.model || "").trim()));
+        renderBars("byCause", tallyCause(rows), "--c6");
         renderBars("bySite", tally(rows, (r) => (r.site || "").trim()), "--c2");
+        renderBars("byModel", tally(rows, (r) => (r.model || "").trim()), "--c1");
         renderBars("byEquip", tally(rows, (r) => (r.equip_type || "").trim()), "--c3");
-        renderBars("bySymptom", symptomWords(rows), "--c5");
         renderMonths(rows, "byMonth", "fault_date");
+        renderRepeat(repeatFaults(rows));
+        renderRisk(siteRisk(rows));
       } catch (e) {
         setStatus("불러오기 오류: " + e.message + " (fault_cases 테이블 확인)", true);
       }

@@ -28,7 +28,7 @@ export async function getCase(id) {
 export async function statsCases({ office, from, to } = {}) {
   let query = supabase
     .from("fault_cases")
-    .select("office, site, equip_type, model, symptom, fault_date")
+    .select("office, site, equip_type, model, equipment, symptom, action, fault_date")
     .order("fault_date", { ascending: false })
     .limit(5000);
   if (office) query = query.eq("office", office);
