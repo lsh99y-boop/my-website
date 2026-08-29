@@ -1,9 +1,9 @@
 // KBS 일일업무일지 PWA 서비스워커 — 네트워크 우선 + 오프라인 캐시 폴백
-const CACHE = "ilji-v7";
+const CACHE = "ilji-v8";
 const SHELL = [
-  "./", "./index.html", "./daily.html", "./cases.html", "./help.html", "./analysis.html",
+  "./", "./index.html", "./daily.html", "./cases.html", "./help.html", "./analysis.html", "./ai.html",
   "./hwpx.js", "./photo.js", "./storage.js", "./photoStorage.js",
-  "./sites.js", "./faultCases.js", "./faultReport.js", "./supabaseClient.js",
+  "./sites.js", "./faultCases.js", "./faultReport.js", "./supabaseClient.js", "./aiSearch.js",
   "./daylog-templates.js", "./docImport.js", "./docStorage.js",
   "./assets/template_daylog.hwpx", "./assets/template_fault.hwpx",
   "./icons/icon-192.png", "./icons/icon-512.png", "./manifest.webmanifest",

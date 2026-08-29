@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AI 정비 지식 검색</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+  <script>try{var t=localStorage.getItem("ilji_theme");if(t)document.documentElement.setAttribute("data-theme",t);}catch(e){}</script>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <meta name="theme-color" content="#2563eb" />
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+  <link rel="icon" href="icons/favicon-32.png" sizes="32x32" />
+  <script>if("serviceWorker" in navigator){window.addEventListener("load",function(){navigator.serviceWorker.register("sw.js").catch(function(){});});}</script>
+  <style>
+    :root {
+      --bg:#f4f5f8; --surface:#ffffff; --surface-2:#f5f6f9; --line:#e7e9ef; --line-strong:#d8dbe3;
+      --ink:#1b1f2a; --muted:#6b7280;
+      --accent:#2563eb; --accent-ink:#ffffff; --accent-weak:#eef0fe; --accent-border:#dadcfb;
+      --green:#16a34a; --amber:#c77905; --danger:#dc2626;
+      --shadow-sm:0 1px 2px rgba(16,24,40,.05); --shadow:0 2px 4px rgba(16,24,40,.04), 0 10px 24px rgba(16,24,40,.07);
+      --radius:14px;
+    }
+    @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+      --bg:#0e131c; --surface:#161c28; --surface-2:#1e2532; --line:#2a3342; --line-strong:#3a4455;
+      --ink:#e6e9f0; --muted:#96a1b4;
+      --accent:#60a5fa; --accent-ink:#0e131c; --accent-weak:#232b45; --accent-border:#3a4468;
+      --green:#4ade80; --amber:#fbbf24; --danger:#f87171;
+      --shadow-sm:0 1px 2px rgba(0,0,0,.4); --shadow:0 2px 6px rgba(0,0,0,.35), 0 12px 30px rgba(0,0,0,.42);
+    } }
+    :root[data-theme="dark"] {
+      --bg:#0e131c; --surface:#161c28; --surface-2:#1e2532; --line:#2a3342; --line-strong:#3a4455;
+      --ink:#e6e9f0; --muted:#96a1b4;
+      --accent:#60a5fa; --accent-ink:#0e131c; --accent-weak:#232b45; --accent-border:#3a4468;
+      --green:#4ade80; --amber:#fbbf24; --danger:#f87171;
+      --shadow-sm:0 1px 2px rgba(0,0,0,.4); --shadow:0 2px 6px rgba(0,0,0,.35), 0 12px 30px rgba(0,0,0,.42);
+    }
+    * { box-sizing:border-box; }
+    body { font-family:"Pretendard Variable",Pretendard,system-ui,"Malgun Gothic",sans-serif; margin:0; background:var(--bg); color:var(--ink); -webkit-font-smoothing:antialiased; }
+    .topbar { position:sticky; top:0; z-index:50; background:var(--surface); border-bottom:1px solid var(--line); box-shadow:var(--shadow-sm); }
+    .topbar-inner { max-width:920px; margin:0 auto; padding:11px 18px; display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+    .brand { font-weight:800; font-size:1.05rem; letter-spacing:-.01em; }
+    .tb-actions { margin-left:auto; display:flex; gap:8px; align-items:center; }
+    .tb-btn { color:var(--accent); background:var(--surface); text-decoration:none; font-weight:600; font-size:.84rem; white-space:nowrap; border:1px solid var(--accent-border); border-radius:9px; padding:8px 12px; cursor:pointer; }
+    .tb-btn:hover { background:var(--accent-weak); }
+    .icon-btn { padding:8px 10px; font-size:1rem; line-height:1; }
+    main { max-width:920px; margin:20px auto; padding:0 16px 80px; }
+
+    .searchbox { background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:16px; box-shadow:var(--shadow-sm); }
+    .searchbox h1 { font-size:1.15rem; margin:0 0 3px; display:flex; align-items:center; gap:8px; }
+    .searchbox .desc { font-size:.84rem; color:var(--muted); margin-bottom:12px; }
+    .qrow { display:flex; gap:8px; }
+    #q { flex:1; font:inherit; color:var(--ink); background:var(--surface); border:1px solid var(--line-strong); border-radius:10px; padding:12px 14px; resize:none; min-height:52px; line-height:1.5; }
+    #q:focus { outline:2px solid var(--accent); border-color:var(--accent); }
+    .btn-primary { background:var(--accent); color:var(--accent-ink); border:0; border-radius:10px; font-weight:700; padding:0 18px; cursor:pointer; white-space:nowrap; }
+    .btn-primary:disabled { opacity:.5; cursor:default; }
+    .chips { display:flex; flex-wrap:wrap; gap:7px; margin-top:12px; }
+    .chip { background:var(--surface-2); border:1px solid var(--line); border-radius:20px; padding:6px 12px; font-size:.82rem; color:var(--ink); cursor:pointer; }
+    .chip:hover { background:var(--accent-weak); border-color:var(--accent-border); color:var(--accent); }
+
+    .aibar { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-top:12px; font-size:.82rem; color:var(--muted); }
+    .ai-toggle { background:var(--surface-2); border:1px solid var(--line-strong); border-radius:9px; padding:7px 12px; font-weight:600; color:var(--ink); cursor:pointer; }
+    .ai-toggle:hover { background:var(--accent-weak); border-color:var(--accent-border); color:var(--accent); }
+    .prog { flex:1; min-width:120px; height:6px; background:var(--surface-2); border-radius:4px; overflow:hidden; display:none; }
+    .prog > i { display:block; height:100%; width:0; background:var(--accent); transition:width .2s; }
+
+    #status { font-size:.85rem; color:var(--muted); margin:14px 2px 6px; min-height:1.1em; }
+    #status.err { color:var(--danger); }
+
+    .ai-answer { background:var(--accent-weak); border:1px solid var(--accent-border); border-radius:var(--radius); padding:15px 17px; margin:14px 0; white-space:pre-wrap; line-height:1.65; font-size:.95rem; }
+    .ai-answer .h { font-weight:800; color:var(--accent); margin-bottom:6px; display:flex; align-items:center; gap:7px; }
+
+    .sec { margin-top:18px; }
+    .sec h2 { font-size:.98rem; margin:0 0 9px; display:flex; align-items:center; gap:7px; }
+    .sec h2 .cnt { font-size:.78rem; color:var(--muted); font-weight:600; }
+    .rec { border:1px solid var(--line); border-radius:11px; padding:11px 13px; margin-bottom:9px; background:var(--surface); box-shadow:var(--shadow-sm); }
+    .rec .top { display:flex; gap:7px; align-items:center; flex-wrap:wrap; font-size:.78rem; color:var(--muted); }
+    .tag { background:var(--surface-2); border-radius:20px; padding:2px 9px; font-weight:600; }
+    .tag.src-f { background:color-mix(in srgb, var(--accent) 15%, var(--surface)); color:var(--accent); }
+    .tag.src-l { background:color-mix(in srgb, var(--green) 16%, var(--surface)); color:var(--green); }
+    .rec .model { font-weight:800; color:var(--accent); margin:5px 0 2px; }
+    .rec .kv { font-size:.9rem; margin-top:3px; line-height:1.5; }
+    .rec .kv b { color:var(--muted); font-weight:700; font-size:.8rem; }
+    .rec .snip { font-size:.9rem; margin-top:4px; white-space:pre-wrap; line-height:1.5; }
+    .empty { color:var(--muted); text-align:center; padding:18px 8px; font-size:.9rem; }
+    .note { font-size:.8rem; color:var(--muted); margin-top:18px; text-align:center; line-height:1.6; }
+  </style>
+</head>
+<body>
+  <div id="pinGate" style="position:fixed;inset:0;background:#0e1420;z-index:9999;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px;color:#e6ebf2;padding:20px;text-align:center">
+    <div style="font-size:1.3rem;font-weight:700">🤖 AI 정비 지식 검색</div>
+    <div style="color:#8a94a3;font-size:.9rem">접속 PIN을 입력하세요</div>
+    <input id="pinInput" type="password" inputmode="numeric" maxlength="12" placeholder="PIN"
+           style="font-size:1.4rem;text-align:center;letter-spacing:.25em;padding:10px 16px;border-radius:8px;border:1px solid #2a3550;background:#182130;color:#fff;width:200px" />
+    <button id="pinOk" style="background:#2563eb;color:#fff;padding:11px 28px;font-size:1rem;border:0;border-radius:8px;cursor:pointer">확인</button>
+    <div id="pinErr" style="color:#ff6b6b;font-size:.85rem;height:1.1em"></div>
+  </div>
+
+  <div class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">🤖 AI 정비 지식 검색</div>
+      <div class="tb-actions">
+        <a class="tb-btn" href="index.html">🏠 홈</a>
+        <a class="tb-btn" href="cases.html">🔧 정비사례</a>
+        <a class="tb-btn" href="analysis.html">📊 분석</a>
+        <button class="tb-btn icon-btn" id="themeToggle" title="라이트/다크 전환">🌙</button>
+      </div>
+    </div>
+  </div>
+
+  <main>
+    <div class="searchbox">
+      <h1>🤖 AI 정비 지식 검색</h1>
+      <div class="desc">정비사례와 일일업무일지를 <b>한 번에</b> 검색합니다. 자연어로 물어보세요. <b>데이터는 기기 밖으로 나가지 않아요.</b></div>
+      <div class="qrow">
+        <textarea id="q" placeholder="예: 계룡산 송신기 엑사이터 관련 정비내용 찾아줘"></textarea>
+        <button class="btn-primary" id="go">검색</button>
+      </div>
+      <div class="chips" id="chips"></div>
+      <div class="aibar">
+        <button class="ai-toggle" id="aiToggle">🤖 AI 분석 켜기</button>
+        <span id="aiState">AI 요약은 선택 사항이에요 (모델 약 1GB 다운로드 · WebGPU 필요)</span>
+        <div class="prog" id="prog"><i id="progFill"></i></div>
+      </div>
+    </div>
+
+    <div id="status"></div>
+    <div id="aiAnswer"></div>
+
+    <div class="sec">
+      <h2>🔧 관련 정비사례 <span class="cnt" id="cntF"></span></h2>
+      <div id="faults"><div class="empty">검색어를 입력하고 검색하세요.</div></div>
+    </div>
+    <div class="sec">
+      <h2>📋 관련 일일업무일지 <span class="cnt" id="cntL"></span></h2>
+      <div id="logs"><div class="empty">—</div></div>
+    </div>
+
+    <div class="note">
+      ※ AI는 <b>검색된 실제 기록만</b> 근거로 요약합니다. 기록에 없는 원인·조치는 지어내지 않아요.<br>
+      ※ 통계·상세 그래프는 <a href="analysis.html" style="color:var(--accent)">📊 데이터 분석</a>에서 보세요.
+    </div>
+  </main>
+
+  <script type="module">
+    import { knowledgeSearch, buildContext, extractConditions } from "./aiSearch.js";
+
+    const APP_PIN = "7590";
+    (function () {
+      const gate = document.getElementById("pinGate");
+      if (localStorage.getItem("ilji_pin_ok") === APP_PIN) { gate.remove(); return; }
+      const inp = document.getElementById("pinInput"), err = document.getElementById("pinErr");
+      const go = () => { if (inp.value === APP_PIN) { localStorage.setItem("ilji_pin_ok", APP_PIN); gate.remove(); } else { err.textContent = "PIN이 틀렸어요"; inp.value = ""; inp.focus(); } };
+      document.getElementById("pinOk").addEventListener("click", go);
+      inp.addEventListener("keydown", (e) => { if (e.key === "Enter") go(); });
+      inp.focus();
+    })();
+
+    const tbtn = document.getElementById("themeToggle");
+    function paint(t) { const r = document.documentElement; if (t) r.setAttribute("data-theme", t); else r.removeAttribute("data-theme"); tbtn.textContent = (t ? t === "dark" : matchMedia("(prefers-color-scheme: dark)").matches) ? "☀️" : "🌙"; }
+    paint(localStorage.getItem("ilji_theme"));
+    tbtn.addEventListener("click", () => { const r = document.documentElement; const cur = r.getAttribute("data-theme") || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"); const nx = cur === "dark" ? "light" : "dark"; localStorage.setItem("ilji_theme", nx); paint(nx); });
+
+    const $ = (id) => document.getElementById(id);
+    const esc = (s) => (s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;");
+    const setStatus = (m, err) => { const s = $("status"); s.textContent = m || ""; s.className = err ? "err" : ""; };
+
+    const SUGGEST = [
+      "최근 정비사례를 알려줘",
+      "계룡산 반복고장을 찾아줘",
+      "엑사이터 관련 정비내용을 찾아줘",
+      "올해 계룡산 송신기 정비 내용",
+      "과거에 비슷한 고장이 발생했을 때 어떻게 조치했어?",
+      "최근에 GPS 관련 정비를 한 시설을 찾아줘",
+    ];
+    $("chips").innerHTML = SUGGEST.map((s) => `<span class="chip">${esc(s)}</span>`).join("");
+    $("chips").querySelectorAll(".chip").forEach((c) => c.addEventListener("click", () => { $("q").value = c.textContent; doSearch(); }));
+
+    // ===== WebLLM (브라우저 내 모델) =====
+    let engine = null, aiLoading = false;
+    async function loadAI() {
+      if (engine || aiLoading) return;
+      if (!navigator.gpu) { $("aiState").innerHTML = `<span style="color:var(--danger)">이 브라우저는 WebGPU 미지원 — 크롬/엣지(PC)에서 AI 요약을 쓸 수 있어요. 검색 결과는 그대로 보여요.</span>`; return; }
+      aiLoading = true;
+      $("aiToggle").disabled = true; $("aiToggle").textContent = "🤖 불러오는 중…";
+      $("prog").style.display = "block";
+      try {
+        const webllm = await import("https://esm.run/@mlc-ai/web-llm");
+        const model = "Qwen2.5-1.5B-Instruct-q4f16_1-MLC";
+        engine = await webllm.CreateMLCEngine(model, {
+          initProgressCallback: (p) => {
+            $("aiState").textContent = p.text || "모델 준비 중…";
+            if (typeof p.progress === "number") $("progFill").style.width = Math.round(p.progress * 100) + "%";
+          },
+        });
+        $("aiState").innerHTML = `<b style="color:var(--green)">✅ AI 준비됨</b> — 이제 검색하면 AI 요약이 함께 나와요`;
+        $("aiToggle").textContent = "🤖 AI 켜짐";
+        $("prog").style.display = "none";
+      } catch (e) {
+        $("aiState").innerHTML = `<span style="color:var(--danger)">AI 로드 실패: ${esc(e.message || String(e))}</span>`;
+        $("aiToggle").disabled = false; $("aiToggle").textContent = "🤖 다시 시도";
+      } finally { aiLoading = false; }
+    }
+    $("aiToggle").addEventListener("click", loadAI);
+
+    const SYS = [
+      "너는 방송 송신설비의 정비사례와 일일업무일지를 분석하는 정비 지식 검색 AI다.",
+      "반드시 아래에 제공된 검색 결과(정비사례/일일업무일지)에 있는 내용만 근거로 답한다.",
+      "검색 결과에 없는 고장 원인이나 조치방법을 추측하거나 지어내지 않는다.",
+      "정보가 없으면 '등록된 정보가 없습니다'라고 표현한다.",
+      "같은 시설·장비·날짜가 정비사례와 일지에 함께 나오면 하나의 정비 이력으로 연결해 설명한다.",
+      "답변은 한국어로 간결하게. 근거가 된 날짜·시설·장비를 함께 표시한다.",
+      "형식: [AI 분석] 요약 → [주요 내용] 정리. 데이터가 없는 항목은 쓰지 않는다.",
+    ].join(" ");
+
+    async function aiSummarize(question, faults, logs) {
+      if (!engine) return;
+      if (!faults.length && !logs.length) { renderAnswer("[AI 분석]\n검색 결과가 없어 분석할 데이터가 없습니다."); return; }
+      const ctx = buildContext(faults, logs);
+      renderAnswer("[AI 분석]\n작성 중…");
+      try {
+        const res = await engine.chat.completions.create({
+          messages: [
+            { role: "system", content: SYS },
+            { role: "user", content: `질문: ${question}\n\n[검색된 실제 기록 — 이 내용만 근거로 답하세요]\n${ctx}` },
+          ],
+          temperature: 0.2, max_tokens: 700,
+        });
+        renderAnswer(res.choices?.[0]?.message?.content || "(응답 없음)");
+      } catch (e) {
+        renderAnswer(`[AI 분석]\nAI 요약 오류: ${e.message || e}. 아래 검색 결과를 참고하세요.`);
+      }
+    }
+    function renderAnswer(text) {
+      $("aiAnswer").innerHTML = `<div class="ai-answer"><div class="h">🤖 AI 분석</div>${esc(text).replace(/^\[AI 분석\]\s*/,"")}</div>`;
+    }
+
+    // ===== 렌더 =====
+    function renderFaults(list) {
+      $("cntF").textContent = list.length ? `${list.length}건` : "";
+      const el = $("faults");
+      if (!list.length) { el.innerHTML = `<div class="empty">관련 정비사례가 없어요</div>`; return; }
+      el.innerHTML = list.map((f) => `
+        <div class="rec">
+          <div class="top"><span class="tag src-f">정비사례</span><span class="tag">${esc(f.office)}</span><span class="tag">${esc(f.site)}</span>${f.equip ? `<span class="tag">${esc(f.equip)}</span>` : ""}<span style="margin-left:auto">${esc(f.date)}</span></div>
+          <div class="model">${esc(f.model || "(모델 미입력)")}</div>
+          ${f.symptom ? `<div class="kv"><b>증상</b> ${esc(f.symptom)}</div>` : ""}
+          ${f.action ? `<div class="kv"><b>조치</b> ${esc(f.action)}</div>` : ""}
+        </div>`).join("");
+    }
+    function renderLogs(list) {
+      $("cntL").textContent = list.length ? `${list.length}건` : "";
+      const el = $("logs");
+      if (!list.length) { el.innerHTML = `<div class="empty">관련 일지 기록이 없어요</div>`; return; }
+      el.innerHTML = list.map((l) => `
+        <div class="rec">
+          <div class="top"><span class="tag src-l">일일업무일지</span><span class="tag">${esc(l.office)}</span><span class="tag">${esc(l.site)}</span><span style="margin-left:auto">${esc(l.date)}</span></div>
+          <div class="snip">${esc(l.text)}</div>
+        </div>`).join("");
+    }
+
+    async function doSearch() {
+      const question = $("q").value.trim();
+      if (!question) { setStatus("질문을 입력하세요.", true); return; }
+      $("go").disabled = true;
+      $("aiAnswer").innerHTML = "";
+      setStatus("검색 중…");
+      try {
+        const { cond, faults, logs } = await knowledgeSearch(question);
+        renderFaults(faults); renderLogs(logs);
+        const bits = [];
+        if (cond.sites.length) bits.push("시설:" + cond.sites.join(","));
+        if (cond.equips.length) bits.push("장비:" + cond.equips.join(","));
+        if (cond.topics.length) bits.push("키워드:" + cond.topics.join(","));
+        if (cond.from) bits.push("기간:" + cond.from + (cond.to ? "~" + cond.to : "~"));
+        setStatus(`정비사례 ${faults.length}건 · 일지 ${logs.length}건` + (bits.length ? ` (인식: ${bits.join(" / ")})` : ""));
+        if (engine) aiSummarize(question, faults, logs);
+      } catch (e) {
+        setStatus("검색 오류: " + e.message + " (테이블 확인)", true);
+      } finally { $("go").disabled = false; }
+    }
+    $("go").addEventListener("click", doSearch);
+    $("q").addEventListener("keydown", (e) => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) doSearch(); });
+  </script>
+</body>
+</html>
