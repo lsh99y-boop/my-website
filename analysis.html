@@ -85,6 +85,12 @@
     .mcap { font-size:.62rem; color:var(--muted); white-space:nowrap; }
     .mnum { font-size:.66rem; font-weight:700; }
 
+    /* 문제 언급 목록 */
+    .logrow { border:1px solid var(--line); border-radius:10px; padding:10px 13px; margin-top:8px; }
+    .lr-top { display:flex; gap:6px; align-items:center; font-size:.76rem; color:var(--muted); }
+    .tag { background:var(--surface-2); border-radius:20px; padding:2px 9px; font-weight:600; }
+    .tag.office { background:var(--accent-weak); color:var(--accent); }
+    .lr-text { font-size:.92rem; margin-top:5px; white-space:pre-wrap; color:var(--ink); line-height:1.5; }
     .empty { color:var(--muted); text-align:center; padding:22px 8px; font-size:.92rem; }
     .note { font-size:.8rem; color:var(--muted); margin-top:14px; text-align:center; }
     #status { font-size:.85rem; color:var(--muted); margin:10px 2px; min-height:1.1em; }
@@ -141,15 +147,14 @@
       </div>
     </div>
 
-    <!-- 일일업무일지 탭 -->
+    <!-- 일일업무일지 탭: 문제·고장 언급 찾기 -->
     <div id="tabLog" style="display:none">
       <div class="cards" id="logKpis"></div>
       <div class="grid2">
-        <div class="card" style="grid-column:1/-1"><h2>💬 자주 나온 업무 키워드</h2><div class="sub">일지 내용에서 자동 추출 (예: 송신기·고장·정전·점검…)</div><div class="bars" id="logKw"></div></div>
-        <div class="card"><h2>🏢 국별 작성 건수</h2><div class="sub">어느 국이 많이 작성했는지</div><div class="bars" id="logOffice"></div></div>
-        <div class="card"><h2>📅 요일별 작성</h2><div class="sub">작성 요일 분포</div><div class="bars" id="logDow"></div></div>
-        <div class="card" style="grid-column:1/-1"><h2>📈 월별 작성 추세</h2><div class="sub">최근 12개월 일지 작성 건수</div><div class="months" id="logMonth"></div></div>
+        <div class="card"><h2>📍 시설별 문제 언급</h2><div class="sub">어느 시설에서 문제가 많이 적혔는지</div><div class="bars" id="logBySite"></div></div>
+        <div class="card"><h2>📈 월별 문제 추세</h2><div class="sub">최근 12개월 문제 언급 건수</div><div class="months" id="logMonth"></div></div>
       </div>
+      <div class="card" style="margin-top:16px"><h2>⚠️ 문제·고장 언급 목록</h2><div class="sub">일지에 <b>고장·문제·이상·정전·교체·트립·과열…</b> 등이 적힌 항목 (최신순)</div><div id="logList"></div></div>
     </div>
 
     <div class="note">※ 정비사례 등록분 + 일일업무일지 내용을 집계합니다. 데이터가 쌓일수록 패턴이 뚜렷해져요.</div>
@@ -278,55 +283,65 @@
       }
     }
 
-    // ===== 일일업무일지 탭 =====
-    const WD = ["일", "월", "화", "수", "목", "금", "토"];
-    const LOG_STOP = new Set(["및","등","것","이상","발생","현상","상태","점검","확인","정상","실시","완료","이상없음","없음","오전","오후","시","분","이","그","저","수","때","중","후","전","합니다","했다","됨","함","약","또는","관련","부분","동작","실시함","완료함","진행"]);
-    function logWords(rows) {
-      const m = new Map();
+    // ===== 일일업무일지 탭: 문제·정비·수리 언급 찾기 =====
+    // 장비 문제/조치를 나타내는 말
+    const PROB = /(고장|문제|이상|불량|장애|오류|에러|교체|정전|트립|과열|누수|경보|알람|다운|불능|먹통|손상|파손|누전|단선|이상음|과전류|과전압|셧다운|재기동|리셋|비정상|수리|정비|조치|점검요망)/;
+    function problemEntries(rows) {
+      const out = [];
       for (const r of rows) {
         const c = r.contents || {};
         for (const key in c) {
-          const txt = String(c[key] || "").replace(/\[(?:사진|그림)[\d,\s]*\]/g, " ").replace(/[^가-힣a-zA-Z0-9]+/g, " ");
-          for (let w of txt.split(/\s+/)) {
-            w = w.trim();
-            if (w.length < 2 || LOG_STOP.has(w) || /^\d+$/.test(w)) continue;
-            m.set(w, (m.get(w) || 0) + 1);
+          const text = String(c[key] || "").replace(/\[(?:사진|그림)[\d,\s]*\]/g, "");
+          for (let line of text.split(/\n+/)) {
+            line = line.trim();
+            if (line.length < 2 || !PROB.test(line)) continue;
+            out.push({ office: r.office, date: r.log_date, facility: labelForKey(key), text: line });
           }
         }
       }
-      return [...m.entries()].sort((a, b) => b[1] - a[1]);
+      out.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+      return out;
     }
-    function renderLogKpis(rows) {
+    function renderLogKpis(entries) {
       const ym = new Date(); const cur = `${ym.getFullYear()}-${String(ym.getMonth() + 1).padStart(2, "0")}`;
-      const monthCnt = rows.filter((r) => (r.log_date || "").startsWith(cur)).length;
-      const offices = new Set(rows.map((r) => r.office)).size;
-      const kw = logWords(rows);
+      const monthCnt = entries.filter((e) => (e.date || "").startsWith(cur)).length;
+      const bySite = tally(entries, (e) => e.facility);
       const cards = [
-        { k: "총 일지", v: rows.length + "<small>건</small>" },
+        { k: "문제·정비 언급", v: entries.length + "<small>건</small>" },
         { k: "이번 달", v: monthCnt + "<small>건</small>" },
-        { k: "작성 국", v: offices + "<small>개국</small>" },
-        { k: "TOP 키워드", v: kw[0] ? `${esc(kw[0][0])} <small>${kw[0][1]}회</small>` : "—", accent: true },
+        { k: "관련 시설", v: new Set(entries.map((e) => e.facility)).size + "<small>곳</small>" },
+        { k: "TOP 시설", v: bySite[0] ? `${esc(bySite[0][0])} <small>${bySite[0][1]}건</small>` : "—", accent: true },
       ];
       $("logKpis").innerHTML = cards.map((c) => `<div class="kpi"><div class="k">${c.k}</div><div class="v${c.accent ? " accent" : ""}">${c.v}</div></div>`).join("");
+    }
+    function renderLogList(entries) {
+      const el = $("logList");
+      if (!entries.length) { el.innerHTML = `<div class="empty">문제·정비로 적힌 항목이 없어요</div>`; return; }
+      el.innerHTML = entries.slice(0, 100).map((e) => `
+        <div class="logrow">
+          <div class="lr-top"><span class="tag office">${esc(e.office)}</span><span class="tag">${esc(e.facility)}</span><span style="margin-left:auto">${esc(e.date)}</span></div>
+          <div class="lr-text">${esc(e.text)}</div>
+        </div>`).join("");
     }
     async function loadLog() {
       setStatus("불러오는 중…");
       try {
         const office = $("fOffice").value || undefined;
         const rows = await statsLogs({ office, ...periodRange() });
+        const entries = problemEntries(rows);
         if (!rows.length) {
           setStatus("");
           $("logKpis").innerHTML = "";
-          ["logKw", "logOffice", "logDow"].forEach((id) => $(id).innerHTML = `<div class="empty">작성된 일지가 없어요</div>`);
+          $("logBySite").innerHTML = `<div class="empty">작성된 일지가 없어요</div>`;
           $("logMonth").innerHTML = `<div class="empty" style="margin:auto">데이터 없음</div>`;
+          $("logList").innerHTML = `<div class="empty">데이터 없음</div>`;
           return;
         }
-        setStatus(`일지 ${rows.length}건 분석`);
-        renderLogKpis(rows);
-        renderBars("logKw", logWords(rows), "--c5");
-        renderBars("logOffice", tally(rows, (r) => r.office), "--c2");
-        renderBars("logDow", tally(rows, (r) => r.log_date ? WD[new Date(r.log_date + "T00:00:00").getDay()] + "요일" : ""), "--c4");
-        renderMonths(rows, "logMonth", "log_date");
+        setStatus(`일지 ${rows.length}건 중 문제·정비 언급 ${entries.length}건`);
+        renderLogKpis(entries);
+        renderBars("logBySite", tally(entries, (e) => e.facility), "--c4");
+        renderMonths(entries, "logMonth", "date");
+        renderLogList(entries);
       } catch (e) {
         setStatus("일지 불러오기 오류: " + e.message + " (work_logs 테이블 확인)", true);
       }
