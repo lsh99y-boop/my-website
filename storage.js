@@ -98,6 +98,16 @@ export async function searchLogs(q, office) {
   return out;
 }
 
+// 데이터 분석용: 일지 원문 조회 (국/기간 필터)
+export async function statsLogs({ office, from } = {}) {
+  let query = supabase.from("work_logs").select("office, log_date, contents").order("log_date", { ascending: false }).limit(4000);
+  if (office) query = query.eq("office", office);
+  if (from) query = query.gte("log_date", from);
+  const { data, error } = await query;
+  if (error) throw error;
+  return data || [];
+}
+
 // N개월 지난 일지 자동 삭제 (기본 6개월). 국 무관.
 export async function cleanupOld(months = 6) {
   const d = new Date();

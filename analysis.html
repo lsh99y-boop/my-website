@@ -49,6 +49,10 @@
     .icon-btn { padding:8px 10px; font-size:1rem; line-height:1; }
 
     main { max-width:1100px; margin:18px auto; padding:0 16px 70px; }
+    .tabs { display:flex; gap:4px; margin-bottom:14px; border-bottom:1px solid var(--line); }
+    .tab { background:transparent; border:0; border-bottom:2px solid transparent; padding:9px 15px; font-size:.92rem; font-weight:700; color:var(--muted); cursor:pointer; margin-bottom:-1px; }
+    .tab.active { color:var(--accent); border-bottom-color:var(--accent); }
+    .tab:hover { color:var(--ink); }
     .filters { display:flex; gap:10px; flex-wrap:wrap; align-items:end; margin-bottom:16px; }
     .fld { display:flex; flex-direction:column; gap:3px; }
     .fld label { font-size:.72rem; color:var(--muted); font-weight:700; }
@@ -99,7 +103,7 @@
 
   <div class="topbar">
     <div class="topbar-inner">
-      <div class="brand">📊 데이터 분석 <span style="font-weight:400;color:var(--muted);font-size:.8rem">· 정비사례 통계</span></div>
+      <div class="brand">📊 데이터 분석 <span style="font-weight:400;color:var(--muted);font-size:.8rem">· 정비사례 · 일일업무일지</span></div>
       <div class="tb-actions">
         <a class="tb-btn" href="index.html">🏠 홈</a>
         <a class="tb-btn" href="cases.html">🔧 정비사례</a>
@@ -109,6 +113,11 @@
   </div>
 
   <main>
+    <div class="tabs">
+      <button class="tab active" data-tab="fault">🔧 정비사례</button>
+      <button class="tab" data-tab="log">📋 일일업무일지</button>
+    </div>
+
     <div class="filters">
       <div class="fld"><label>소속국</label><select id="fOffice"></select></div>
       <div class="fld"><label>기간</label><select id="fPeriod">
@@ -120,22 +129,36 @@
 
     <div id="status">불러오는 중…</div>
 
-    <div class="cards" id="kpis"></div>
-
-    <div class="grid2">
-      <div class="card"><h2>🔧 모델별 고장 TOP</h2><div class="sub">어떤 모델이 자주 고장나는지</div><div class="bars" id="byModel"></div></div>
-      <div class="card"><h2>📍 시설(송신소)별</h2><div class="sub">고장·정비가 많은 시설</div><div class="bars" id="bySite"></div></div>
-      <div class="card"><h2>🖥️ 장비 종류별</h2><div class="sub">송신기·엑사이터·중계기 등</div><div class="bars" id="byEquip"></div></div>
-      <div class="card"><h2>💬 증상 키워드 TOP</h2><div class="sub">자주 나오는 증상 단어(자동 추출)</div><div class="bars" id="bySymptom"></div></div>
-      <div class="card" style="grid-column:1/-1"><h2>📈 월별 추세</h2><div class="sub">최근 12개월 고장·정비 건수</div><div class="months" id="byMonth"></div></div>
+    <!-- 정비사례 탭 -->
+    <div id="tabFault">
+      <div class="cards" id="kpis"></div>
+      <div class="grid2">
+        <div class="card"><h2>🔧 모델별 고장 TOP</h2><div class="sub">어떤 모델이 자주 고장나는지</div><div class="bars" id="byModel"></div></div>
+        <div class="card"><h2>📍 시설(송신소)별</h2><div class="sub">고장·정비가 많은 시설</div><div class="bars" id="bySite"></div></div>
+        <div class="card"><h2>🖥️ 장비 종류별</h2><div class="sub">송신기·엑사이터·중계기 등</div><div class="bars" id="byEquip"></div></div>
+        <div class="card"><h2>💬 증상 키워드 TOP</h2><div class="sub">자주 나오는 증상 단어(자동 추출)</div><div class="bars" id="bySymptom"></div></div>
+        <div class="card" style="grid-column:1/-1"><h2>📈 월별 추세</h2><div class="sub">최근 12개월 고장·정비 건수</div><div class="months" id="byMonth"></div></div>
+      </div>
     </div>
 
-    <div class="note">※ 정비사례에 등록된 데이터를 집계합니다. 데이터가 쌓일수록 패턴이 뚜렷해져요. (일지 분석은 추후 추가 예정)</div>
+    <!-- 일일업무일지 탭 -->
+    <div id="tabLog" style="display:none">
+      <div class="cards" id="logKpis"></div>
+      <div class="grid2">
+        <div class="card" style="grid-column:1/-1"><h2>💬 자주 나온 업무 키워드</h2><div class="sub">일지 내용에서 자동 추출 (예: 송신기·고장·정전·점검…)</div><div class="bars" id="logKw"></div></div>
+        <div class="card"><h2>🏢 국별 작성 건수</h2><div class="sub">어느 국이 많이 작성했는지</div><div class="bars" id="logOffice"></div></div>
+        <div class="card"><h2>📅 요일별 작성</h2><div class="sub">작성 요일 분포</div><div class="bars" id="logDow"></div></div>
+        <div class="card" style="grid-column:1/-1"><h2>📈 월별 작성 추세</h2><div class="sub">최근 12개월 일지 작성 건수</div><div class="months" id="logMonth"></div></div>
+      </div>
+    </div>
+
+    <div class="note">※ 정비사례 등록분 + 일일업무일지 내용을 집계합니다. 데이터가 쌓일수록 패턴이 뚜렷해져요.</div>
   </main>
 
   <script type="module">
     import { statsCases } from "./faultCases.js";
-    import { OFFICE_LIST } from "./sites.js";
+    import { statsLogs } from "./storage.js";
+    import { OFFICE_LIST, labelForKey } from "./sites.js";
 
     const APP_PIN = "7590";
     (function () {
@@ -191,13 +214,13 @@
           <div class="barval">${cnt}</div></div>`;
       }).join("");
     }
-    function renderMonths(rows) {
-      const el = $("byMonth");
+    function renderMonths(rows, elId, dateField) {
+      const el = $(elId);
       const now = new Date();
       const keys = [];
       for (let i = 11; i >= 0; i--) { const d = new Date(now.getFullYear(), now.getMonth() - i, 1); keys.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`); }
       const cnt = Object.fromEntries(keys.map((k) => [k, 0]));
-      for (const r of rows) { const k = (r.fault_date || "").slice(0, 7); if (k in cnt) cnt[k]++; }
+      for (const r of rows) { const k = (r[dateField] || "").slice(0, 7); if (k in cnt) cnt[k]++; }
       const max = Math.max(1, ...keys.map((k) => cnt[k]));
       el.innerHTML = keys.map((k) => {
         const c = cnt[k]; const h = Math.round(c / max * 100);
@@ -230,7 +253,8 @@
       return {};
     }
 
-    async function load() {
+    // ===== 정비사례 탭 =====
+    async function loadFault() {
       setStatus("불러오는 중…");
       try {
         const office = $("fOffice").value || undefined;
@@ -242,18 +266,82 @@
           $("byMonth").innerHTML = `<div class="empty" style="margin:auto">데이터 없음</div>`;
           return;
         }
-        setStatus(`총 ${rows.length}건 분석`);
+        setStatus(`정비사례 ${rows.length}건 분석`);
         renderKpis(rows);
         renderBars("byModel", tally(rows, (r) => (r.model || "").trim()));
         renderBars("bySite", tally(rows, (r) => (r.site || "").trim()), "--c2");
         renderBars("byEquip", tally(rows, (r) => (r.equip_type || "").trim()), "--c3");
         renderBars("bySymptom", symptomWords(rows), "--c5");
-        renderMonths(rows);
+        renderMonths(rows, "byMonth", "fault_date");
       } catch (e) {
         setStatus("불러오기 오류: " + e.message + " (fault_cases 테이블 확인)", true);
       }
     }
 
+    // ===== 일일업무일지 탭 =====
+    const WD = ["일", "월", "화", "수", "목", "금", "토"];
+    const LOG_STOP = new Set(["및","등","것","이상","발생","현상","상태","점검","확인","정상","실시","완료","이상없음","없음","오전","오후","시","분","이","그","저","수","때","중","후","전","합니다","했다","됨","함","약","또는","관련","부분","동작","실시함","완료함","진행"]);
+    function logWords(rows) {
+      const m = new Map();
+      for (const r of rows) {
+        const c = r.contents || {};
+        for (const key in c) {
+          const txt = String(c[key] || "").replace(/\[(?:사진|그림)[\d,\s]*\]/g, " ").replace(/[^가-힣a-zA-Z0-9]+/g, " ");
+          for (let w of txt.split(/\s+/)) {
+            w = w.trim();
+            if (w.length < 2 || LOG_STOP.has(w) || /^\d+$/.test(w)) continue;
+            m.set(w, (m.get(w) || 0) + 1);
+          }
+        }
+      }
+      return [...m.entries()].sort((a, b) => b[1] - a[1]);
+    }
+    function renderLogKpis(rows) {
+      const ym = new Date(); const cur = `${ym.getFullYear()}-${String(ym.getMonth() + 1).padStart(2, "0")}`;
+      const monthCnt = rows.filter((r) => (r.log_date || "").startsWith(cur)).length;
+      const offices = new Set(rows.map((r) => r.office)).size;
+      const kw = logWords(rows);
+      const cards = [
+        { k: "총 일지", v: rows.length + "<small>건</small>" },
+        { k: "이번 달", v: monthCnt + "<small>건</small>" },
+        { k: "작성 국", v: offices + "<small>개국</small>" },
+        { k: "TOP 키워드", v: kw[0] ? `${esc(kw[0][0])} <small>${kw[0][1]}회</small>` : "—", accent: true },
+      ];
+      $("logKpis").innerHTML = cards.map((c) => `<div class="kpi"><div class="k">${c.k}</div><div class="v${c.accent ? " accent" : ""}">${c.v}</div></div>`).join("");
+    }
+    async function loadLog() {
+      setStatus("불러오는 중…");
+      try {
+        const office = $("fOffice").value || undefined;
+        const rows = await statsLogs({ office, ...periodRange() });
+        if (!rows.length) {
+          setStatus("");
+          $("logKpis").innerHTML = "";
+          ["logKw", "logOffice", "logDow"].forEach((id) => $(id).innerHTML = `<div class="empty">작성된 일지가 없어요</div>`);
+          $("logMonth").innerHTML = `<div class="empty" style="margin:auto">데이터 없음</div>`;
+          return;
+        }
+        setStatus(`일지 ${rows.length}건 분석`);
+        renderLogKpis(rows);
+        renderBars("logKw", logWords(rows), "--c5");
+        renderBars("logOffice", tally(rows, (r) => r.office), "--c2");
+        renderBars("logDow", tally(rows, (r) => r.log_date ? WD[new Date(r.log_date + "T00:00:00").getDay()] + "요일" : ""), "--c4");
+        renderMonths(rows, "logMonth", "log_date");
+      } catch (e) {
+        setStatus("일지 불러오기 오류: " + e.message + " (work_logs 테이블 확인)", true);
+      }
+    }
+
+    // 탭 전환 + 공용 로드
+    let activeTab = "fault";
+    function load() { return activeTab === "fault" ? loadFault() : loadLog(); }
+    document.querySelectorAll(".tab").forEach((btn) => btn.addEventListener("click", () => {
+      activeTab = btn.dataset.tab;
+      document.querySelectorAll(".tab").forEach((b) => b.classList.toggle("active", b === btn));
+      $("tabFault").style.display = activeTab === "fault" ? "" : "none";
+      $("tabLog").style.display = activeTab === "log" ? "" : "none";
+      load();
+    }));
     $("fOffice").addEventListener("change", load);
     $("fPeriod").addEventListener("change", load);
     if (localStorage.getItem("ilji_pin_ok") === APP_PIN) load();
