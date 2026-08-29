@@ -215,10 +215,6 @@
 
   <div class="layout">
     <aside class="sidebar">
-      <div class="prog">
-        <div class="n">작성 현황 <b id="progDone">0</b>/<span id="progTotal">0</span></div>
-        <div class="progbar"><i id="progFill" style="width:0%"></i></div>
-      </div>
       <div class="navlist" id="navlist"></div>
       <div class="side-actions">
         <div class="save-row">
@@ -384,13 +380,14 @@
     function facHas(key) {
       return (models[key] || []).some((b) => (b.text && b.text.trim()) || b.photos.length);
     }
-    // 진행률 갱신
+    // 진행률 갱신 (진행률 표시는 제거됨 — 요소 있으면 갱신)
     function updateProgress() {
       const total = FACILITIES.length; let done = 0;
       for (const [, key] of FACILITIES) if (facHas(key)) done++;
-      document.getElementById("progDone").textContent = done;
-      document.getElementById("progTotal").textContent = total;
-      document.getElementById("progFill").style.width = total ? Math.round(done / total * 100) + "%" : "0%";
+      const d = document.getElementById("progDone"), t = document.getElementById("progTotal"), f = document.getElementById("progFill");
+      if (d) d.textContent = done;
+      if (t) t.textContent = total;
+      if (f) f.style.width = total ? Math.round(done / total * 100) + "%" : "0%";
     }
 
     // 시설칸 상태(카드 뱃지 + 사이드바 + 진행률)
