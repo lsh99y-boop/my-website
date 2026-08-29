@@ -5,9 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>일일업무일지 작성</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@600;700&family=Noto+Serif+KR:wght@600;700&display=swap" rel="stylesheet">
   <script>try{var t=localStorage.getItem("ilji_theme");if(t)document.documentElement.setAttribute("data-theme",t);}catch(e){}</script>
   <link rel="manifest" href="manifest.webmanifest" />
-  <meta name="theme-color" content="#4f46e5" />
+  <meta name="theme-color" content="#2563eb" />
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
   <link rel="icon" href="icons/favicon-32.png" sizes="32x32" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -17,7 +19,7 @@
     :root {
       --bg:#f4f5f8; --surface:#ffffff; --surface-2:#f5f6f9; --line:#e7e9ef; --line-strong:#d8dbe3;
       --ink:#1b1f2a; --muted:#6b7280;
-      --accent:#4f46e5; --accent-ink:#ffffff; --accent-weak:#eef0fe; --accent-border:#dadcfb;
+      --accent:#2563eb; --accent-ink:#ffffff; --accent-weak:#eef0fe; --accent-border:#dadcfb;
       --green:#16a34a; --greenbg:#e7f6ec; --amber:#c77905; --amberbg:#fdf0d9; --danger:#dc2626;
       --shadow-sm:0 1px 2px rgba(16,24,40,.05);
       --shadow:0 2px 4px rgba(16,24,40,.04), 0 10px 24px rgba(16,24,40,.07);
@@ -26,7 +28,7 @@
     @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
       --bg:#0e131c; --surface:#161c28; --surface-2:#1e2532; --line:#2a3342; --line-strong:#3a4455;
       --ink:#e6e9f0; --muted:#96a1b4;
-      --accent:#818cf8; --accent-ink:#0e131c; --accent-weak:#232b45; --accent-border:#3a4468;
+      --accent:#60a5fa; --accent-ink:#0e131c; --accent-weak:#232b45; --accent-border:#3a4468;
       --green:#4ade80; --greenbg:#173524; --amber:#fbbf24; --amberbg:#3a2c10; --danger:#f87171;
       --shadow-sm:0 1px 2px rgba(0,0,0,.4);
       --shadow:0 2px 6px rgba(0,0,0,.35), 0 12px 30px rgba(0,0,0,.42);
@@ -34,7 +36,7 @@
     :root[data-theme="dark"] {
       --bg:#0e131c; --surface:#161c28; --surface-2:#1e2532; --line:#2a3342; --line-strong:#3a4455;
       --ink:#e6e9f0; --muted:#96a1b4;
-      --accent:#818cf8; --accent-ink:#0e131c; --accent-weak:#232b45; --accent-border:#3a4468;
+      --accent:#60a5fa; --accent-ink:#0e131c; --accent-weak:#232b45; --accent-border:#3a4468;
       --green:#4ade80; --greenbg:#173524; --amber:#fbbf24; --amberbg:#3a2c10; --danger:#f87171;
       --shadow-sm:0 1px 2px rgba(0,0,0,.4);
       --shadow:0 2px 6px rgba(0,0,0,.35), 0 12px 30px rgba(0,0,0,.42);
@@ -49,7 +51,7 @@
     /* 상단 스티키 바 */
     .topbar { position:sticky; top:0; z-index:60; background:var(--surface); border-bottom:1px solid var(--line); box-shadow:var(--shadow-sm); }
     .topbar-inner { max-width:1360px; margin:0 auto; padding:10px 18px; display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
-    .brand { font-weight:800; font-size:1.02rem; white-space:nowrap; margin-right:4px; letter-spacing:-.01em; }
+    .brand { font-weight:700; font-size:1.08rem; white-space:nowrap; margin-right:4px; letter-spacing:-.01em; font-family:'Source Serif 4','Noto Serif KR',serif; }
     .tb-office { display:flex; align-items:center; gap:6px; background:var(--accent-weak); border:1px solid var(--accent-border); border-radius:10px; padding:4px 8px 4px 11px; }
     .tb-office label { font-size:.7rem; color:var(--accent); font-weight:700; }
     #office { font:inherit; font-weight:700; font-size:.98rem; border:0; background:transparent; color:var(--accent); cursor:pointer; }
@@ -120,7 +122,7 @@
     .fac.flash { animation: flash 1.2s ease; }
     @keyframes flash { 0%{ box-shadow:0 0 0 3px var(--accent-weak); } 100%{ box-shadow:var(--shadow-sm); } }
     .fac-head { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
-    .fac-name { font-weight:800; font-size:1.06rem; letter-spacing:-.01em; }
+    .fac-name { font-weight:700; font-size:1.15rem; letter-spacing:-.01em; font-family:'Source Serif 4','Noto Serif KR',serif; }
     .fac-badge { font-size:.68rem; padding:3px 10px; border-radius:20px; background:var(--surface-2); color:var(--muted); font-weight:700; }
     .fac.filled .fac-badge { background:var(--greenbg); color:var(--green); }
     .fac-import { margin-left:auto; font-size:.74rem; font-weight:700; padding:6px 11px; background:var(--surface-2); border:1px solid var(--line-strong); border-radius:8px; color:var(--muted); cursor:pointer; white-space:nowrap; }
@@ -136,12 +138,8 @@
     /* 항목(블록) */
     .blocks { display:flex; flex-direction:column; gap:12px; }
     .blk { position:relative; border:1px solid var(--line-strong); border-radius:12px; padding:10px 12px 12px; background:var(--surface-2); }
-    /* 블루프린트 모서리 브래킷 */
-    .blk::before, .blk::after { content:""; position:absolute; width:12px; height:12px; border:2px solid var(--accent-border); pointer-events:none; }
-    .blk::before { top:6px; left:6px; border-width:2px 0 0 2px; }
-    .blk::after { bottom:6px; right:6px; border-width:0 2px 2px 0; }
     .blk-head { display:flex; align-items:center; gap:8px; margin-bottom:7px; }
-    .blk-num { width:22px; height:22px; border-radius:50%; background:var(--accent); color:var(--accent-ink); font-size:.75rem; font-weight:700; display:inline-flex; align-items:center; justify-content:center; flex:none; }
+    .blk-num { width:24px; height:24px; border-radius:50%; background:var(--accent); color:var(--accent-ink); font-size:.8rem; font-weight:700; display:inline-flex; align-items:center; justify-content:center; flex:none; font-family:'Source Serif 4','Noto Serif KR',serif; }
     .blk-tools { margin-left:auto; display:flex; gap:4px; }
     .blk-tool { display:inline-flex; align-items:center; justify-content:center; padding:6px; background:var(--surface); border:1px solid var(--line-strong); border-radius:7px; color:var(--muted); cursor:pointer; }
     .blk-tool .ico { width:15px; height:15px; }
