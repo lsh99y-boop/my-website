@@ -88,6 +88,7 @@
     <div class="card">
       <div class="toc">
         <a href="#install">📱 앱 설치</a>
+        <a href="#home">🏠 홈 화면</a>
         <a href="#start">① 접속·소속국</a>
         <a href="#screen">② 화면 구성</a>
         <a href="#write">③ 일지 작성</a>
@@ -95,6 +96,8 @@
         <a href="#save">⑤ 저장</a>
         <a href="#download">⑥ 다운로드</a>
         <a href="#fault">⑦ 정비사례</a>
+        <a href="#ai">🤖 AI 검색</a>
+        <a href="#analysis">📊 데이터 분석</a>
         <a href="#note">⑧ 주의사항</a>
         <a href="#trouble">⑨ 문제 해결</a>
       </div>
@@ -129,6 +132,23 @@
         <tr><td>아이콘 눌러도 <b>주소창이 떠요</b></td><td>예전 화면 캐시입니다. 브라우저에서 새로고침 후 다시 추가하세요.</td></tr>
       </table>
       <div class="tip">💡 안드로이드·아이폰 모두 설치 후에도 <b>PIN(7590)</b>은 처음 한 번 입력합니다. 카메라·사진·다크모드 모두 그대로 동작해요.</div>
+    </div>
+
+    <div class="card" id="home">
+      <h2><span class="n">🏠</span> 홈 화면 — 여기서 시작</h2>
+      <p class="muted">앱을 열면 <b>홈 화면</b>이 먼저 나와요. 크게 두 부분이에요.</p>
+      <h3>🤖 통합 검색 (맨 위)</h3>
+      <ul>
+        <li>검색창에 <b>말하듯이</b> 물어보면 → <span class="chip">🤖 AI 검색</span> 화면으로 넘어가 <b>정비사례 + 일일업무일지를 한 번에</b> 찾아줘요.</li>
+        <li>예: <i>"계룡산 송신기 엑사이터 관련 정비내용 찾아줘"</i></li>
+        <li><b>데이터는 기기 밖으로 나가지 않아요.</b> (자세한 건 <a href="#ai" style="color:var(--accent)">🤖 AI 검색</a> 참고)</li>
+      </ul>
+      <h3>업무 도구 (아래)</h3>
+      <ul>
+        <li><span class="chip">📋 일일업무일지</span> 매일 업무 작성·다운로드</li>
+        <li><span class="chip">🔧 정비사례</span> 고장·정비 사례 등록·검색</li>
+        <li><span class="chip">📊 데이터 분석</span> 정비사례 통계</li>
+      </ul>
     </div>
 
     <div class="card" id="start">
@@ -237,11 +257,48 @@
     <div class="card" id="fault">
       <h2><span class="n">7</span> 고장 · 정비 사례</h2>
       <ul>
-        <li>상단바 <span class="chip">🔧 정비사례입력</span>을 누르면 <b>전국 공용 고장·정비 사례</b> 페이지로 이동합니다.</li>
+        <li>홈의 <span class="chip">🔧 정비사례</span>(또는 상단바 링크)를 누르면 <b>전국 공용 고장·정비 사례</b> 페이지로 갑니다.</li>
         <li>고장난 장비의 <b>모델명 · 증상 · 조치</b>를 등록해 두면, 다른 국에서도 <b>검색</b>해서 참고할 수 있어요 (전국 지식 공유).</li>
         <li>등록한 사례는 <b>표준 장애보고서(.hwpx)</b>로 사진과 함께 다운로드됩니다.</li>
       </ul>
+      <h3>📎 과거 보고서 첨부 (PDF · HWPX)</h3>
+      <ul>
+        <li>등록 폼 위쪽 <span class="chip">📎 과거 보고서 첨부</span>에 예전 <b>한글(.hwpx)·PDF 보고서</b>를 올릴 수 있어요.</li>
+        <li>올리면 <b>용량을 자동으로 줄여</b> 저장하고, 문서 <b>본문 내용까지 검색</b>됩니다.</li>
+        <li>검색이 되도록 <b>모델명·증상·시설·날짜</b>만 같이 적어두면 좋아요. (스캔 PDF·구버전 .hwp는 텍스트 추출이 안 될 수 있어요)</li>
+      </ul>
       <div class="tip">💡 반복되는 고장·해결법을 남겨두면 팀 전체가 시간을 아낍니다.</div>
+    </div>
+
+    <div class="card" id="ai">
+      <h2><span class="n">🤖</span> AI 검색 — 자연어로 통합 검색</h2>
+      <p class="muted">정확한 검색어를 몰라도, <b>말하듯이 물어보면</b> 정비사례와 일일업무일지를 <b>한 번에</b> 찾아줘요.</p>
+      <h3>쓰는 법</h3>
+      <ol>
+        <li>홈 검색창(또는 <span class="chip">🤖 AI 검색</span>)에 질문 입력 → <b>통합 검색</b></li>
+        <li>예: <i>"엑사이터 관련 정비내용 찾아줘"</i>, <i>"올해 계룡산 송신기 정비"</i></li>
+        <li>관련 <b>정비사례</b>와 <b>일일업무일지</b>가 출처 구분되어 나와요.</li>
+      </ol>
+      <h3>🤖 AI 요약 (선택)</h3>
+      <ul>
+        <li><span class="chip">🤖 AI 분석 켜기</span>를 누르면, AI가 <b>검색된 실제 기록만</b> 보고 요약·정리해줘요. (없는 내용은 지어내지 않아요)</li>
+        <li>🔒 <b>데이터는 기기 밖으로 안 나가요</b> — AI 모델을 <b>내 PC 안에서</b> 돌리기 때문이에요. 그래서 처음 한 번만 <b>모델(약 1GB)을 다운로드</b>해요.</li>
+        <li>AI 요약은 <b>PC 크롬·엣지</b>에서 돼요(WebGPU). 안 되는 기기는 <b>검색 결과만</b> 나오고 안내가 떠요.</li>
+      </ul>
+      <div class="tip">💡 검색만으로도 충분히 쓸모 있어요. AI 요약은 "여러 기록을 한눈에 정리"가 필요할 때 켜세요.</div>
+    </div>
+
+    <div class="card" id="analysis">
+      <h2><span class="n">📊</span> 데이터 분석 (정비사례 통계)</h2>
+      <p class="muted">등록된 <b>정비사례</b>를 자동으로 집계해 패턴을 보여줘요.</p>
+      <ul>
+        <li><b>🔩 고장 부위·원인별</b> — 엑사이터·전원·냉각·GPS·제어 등으로 자동 분류</li>
+        <li><b>📍 시설별 · 🔧 모델별 · 🖥️ 장비 종류별</b> 건수</li>
+        <li><b>🔁 반복 고장</b> — 같은 시설+같은 모델에서 2건 이상(근본 원인 점검 대상)</li>
+        <li><b>🚦 시설별 위험도</b> · <b>📈 월별 추세</b></li>
+        <li>소속국·기간(올해/최근 12개월)으로 <b>필터</b> 가능</li>
+      </ul>
+      <div class="tip">💡 사례가 <b>10건 이상</b> 쌓이면 패턴이 뚜렷해져요. 초반엔 참고용이에요. · 일지 내용 찾기는 <b>🤖 AI 검색</b>을 쓰세요.</div>
     </div>
 
     <div class="card" id="note">
