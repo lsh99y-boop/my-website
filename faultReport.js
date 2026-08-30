@@ -1,4 +1,4 @@
-// 장애보고서 hwpx 생성 (브라우저) — 토큰 템플릿(assets/template_fault.hwpx) 채우기 + 사진부 임베드
+// 정비보고서 hwpx 생성 (브라우저) — 토큰 템플릿(assets/template_fault.hwpx) 채우기 + 사진부 임베드
 import JSZip from "https://esm.sh/jszip@3.10.1";
 
 const TEMPLATE_URL = "assets/template_fault.hwpx";

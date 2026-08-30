@@ -171,7 +171,7 @@
       </div>
       <div id="dvBody"></div>
       <div class="row-btns">
-        <button class="blue" id="dvReport">📄 장애보고서 다운로드</button>
+        <button class="blue" id="dvReport">📄 정비보고서 다운로드</button>
         <button class="ghost" id="dvEdit">✏️ 수정</button>
         <button class="danger" id="dvDelete">🗑 삭제</button>
       </div>
@@ -234,7 +234,7 @@
 
       <div class="row-btns">
         <button class="primary" id="saveBtn">💾 등록</button>
-        <button class="blue" id="reportBtn">📄 장애보고서 다운로드</button>
+        <button class="blue" id="reportBtn">📄 정비보고서 다운로드</button>
         <button class="danger" id="delBtn" style="display:none">🗑 삭제</button>
       </div>
       <div id="fstatus"></div>
@@ -499,8 +499,8 @@
         const d = (c.fault_date || "").replace(/-/g, ".");
         const title = c.title || autoTitle(c);
         const blob = await buildFaultReport({ ...c, title, fault_date: d }, withBytes);
-        downloadBlob(blob, `장애보고서_${(c.site || "")}_${(c.model || c.equip_type || "")}.hwpx`);
-        st(`✅ 장애보고서 다운로드${withBytes.length ? ` (사진 ${withBytes.length}장)` : ""}`, "ok");
+        downloadBlob(blob, `정비보고서_${(c.site || "")}_${(c.model || c.equip_type || "")}.hwpx`);
+        st(`✅ 정비보고서 다운로드${withBytes.length ? ` (사진 ${withBytes.length}장)` : ""}`, "ok");
       } catch (err) { st("보고서 오류: " + err.message, "err"); }
     }
 
