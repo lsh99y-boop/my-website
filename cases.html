@@ -52,7 +52,10 @@
     .icon-btn { padding:8px 10px; font-size:1rem; line-height:1; }
     /* 모바일: 등록·🌙는 윗줄, 이동 링크 4개는 아랫줄 2×2 균등 그리드 */
     @media (max-width:540px) {
-      .tb-actions { width:100%; margin-left:0; display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+      /* 1줄: 제목 … 🌙 등록(오른쪽 끝) / 2줄: 홈·AI·일지·분석 */
+      #themeToggle { order:1; margin-left:auto; }
+      #openNew { order:2; }
+      .tb-actions { order:3; width:100%; margin-left:0; display:grid; grid-template-columns:1fr 1fr; gap:8px; }
       .tb-actions a { text-align:center; }
     }
 
@@ -129,13 +132,13 @@
     <div class="topbar-inner">
       <div class="brand">🔧 정비 사례<small>KBS 전국 공용 지식DB</small></div>
       <button class="primary" id="openNew" style="padding:9px 16px">➕ 등록</button>
-      <button class="tb-btn icon-btn" id="themeToggle" title="라이트/다크 전환">🌙</button>
       <div class="tb-actions">
         <a href="index.html">🏠 홈</a>
         <a href="ai.html">🤖 AI 검색</a>
         <a href="daily.html">📋 일일업무일지</a>
         <a href="analysis.html">📊 데이터 분석</a>
       </div>
+      <button class="tb-btn icon-btn" id="themeToggle" title="라이트/다크 전환">🌙</button>
     </div>
   </div>
 
