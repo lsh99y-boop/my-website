@@ -267,6 +267,7 @@
     import { saveLog, loadLog, cleanupOld, listMonth, searchLogs, loadPrevFacility } from "./storage.js";
     import { uploadPhoto, photoUrl, removePhoto, fetchPhotoBytes } from "./photoStorage.js";
     import { facilitiesFor, OFFICE_LIST, labelForKey } from "./sites.js";
+    import { fetchWeather } from "./weather.js";
 
     // ===== 접속 PIN (팀 공용) =====
     const APP_PIN = "7590"; // ← 팀 공용 PIN
@@ -660,6 +661,7 @@
         confirmedSaveDate = null; // 날짜 바뀌면 저장 확인 다시
         // 오늘이 아닌 날짜면 눈에 띄게 표시
         dateWarn.style.display = dateEl.value === todayStr() ? "none" : "block";
+        maybeAutoWeather(); // 오늘·빈칸이면 지역 날씨 자동 채움(수정 가능)
       } catch (err) {
         setStatus("불러오기 오류: " + err.message + " (테이블 생성됐나요?)", "err");
       } finally {
@@ -687,6 +689,18 @@
       }, 1500);
     }
     weatherEl.addEventListener("input", () => { weatherTouched = true; scheduleAutoSave(); });
+
+    // 소속국 지역의 현재 날씨 자동 채움 — 오늘 날짜 & 빈칸일 때만, 입력값은 안 덮어씀(수정 가능)
+    async function maybeAutoWeather() {
+      if (weatherTouched || weatherEl.value.trim() || dateEl.value !== todayStr()) return;
+      const office = currentOffice, date = dateEl.value;
+      try {
+        const w = await fetchWeather(office);
+        if (w && !weatherTouched && !weatherEl.value.trim() && currentOffice === office && dateEl.value === date) {
+          weatherEl.value = w;
+        }
+      } catch (e) { /* 외부 접속 안 되면 조용히 무시 */ }
+    }
 
     // 소속국 선택
     const officeEl = document.getElementById("office");
