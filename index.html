@@ -58,7 +58,7 @@
     .search .lead { font-size:.92rem; color:var(--muted); margin-bottom:11px; display:flex; align-items:center; gap:8px; flex-wrap:wrap; justify-content:center; }
     .badge { font-size:.72rem; font-weight:700; color:var(--accent); background:var(--accent-weak); border:1px solid var(--accent-border); border-radius:20px; padding:3px 10px; }
     .sform { display:flex; gap:9px; }
-    .sform input { flex:1; font:inherit; color:var(--ink); background:var(--surface); border:1.5px solid var(--line-strong); border-radius:12px; padding:14px 16px; }
+    .sform input { flex:1; min-width:0; font:inherit; color:var(--ink); background:var(--surface); border:1.5px solid var(--line-strong); border-radius:12px; padding:14px 16px; }
     .sform input:focus { outline:none; border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-weak); }
     .sform button { background:var(--accent); color:var(--accent-ink); border:0; border-radius:12px; font-weight:700; padding:0 22px; cursor:pointer; white-space:nowrap; display:flex; align-items:center; gap:7px; }
     .sform button:hover { background:var(--accent-deep); }
@@ -83,6 +83,8 @@
     @media (max-width:540px) {
       .top { padding:10px 14px; }
       .wrap { padding:0 16px 36px; }
+      .sform { flex-direction:column; }
+      .sform button { padding:13px; justify-content:center; }
       .hero { margin:14px 0 14px; }
       .search { padding:15px; }
       .toolhead { margin:20px 4px 10px; }
