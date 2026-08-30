@@ -280,6 +280,12 @@
     }
     $("go").addEventListener("click", doSearch);
     $("q").addEventListener("keydown", (e) => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) doSearch(); });
+
+    // 홈에서 넘어온 질문(?q=) 자동 검색
+    (function () {
+      const preQ = new URLSearchParams(location.search).get("q");
+      if (preQ) { $("q").value = preQ; if (localStorage.getItem("ilji_pin_ok") === APP_PIN) setTimeout(doSearch, 60); }
+    })();
   </script>
 </body>
 </html>
