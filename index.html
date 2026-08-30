@@ -78,6 +78,20 @@
 
     .foot { text-align:center; color:var(--muted); font-size:.82rem; margin-top:30px; }
     .foot a { color:var(--accent); text-decoration:none; }
+
+    /* 휴대폰: 한 화면에 들어오도록 압축 */
+    @media (max-width:540px) {
+      .top { padding:10px 14px; }
+      .wrap { padding:0 16px 36px; }
+      .hero { margin:14px 0 14px; }
+      .search { padding:15px; }
+      .toolhead { margin:20px 4px 10px; }
+      .cards { grid-template-columns:repeat(3,1fr); gap:9px; }
+      .tile { padding:15px 9px; align-items:center; text-align:center; gap:6px; }
+      .tile .emoji { font-size:1.7rem; }
+      .tile .t { font-size:.9rem; }
+      .tile .d, .tile .go { display:none; }
+    }
   </style>
 </head>
 <body>
