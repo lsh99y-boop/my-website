@@ -50,6 +50,11 @@
     .tb-actions a, .tb-btn { color:var(--accent); background:var(--surface); text-decoration:none; font-weight:600; font-size:.84rem; white-space:nowrap; border:1px solid var(--accent-border); border-radius:9px; padding:8px 12px; cursor:pointer; }
     .tb-actions a:hover, .tb-btn:hover { background:var(--accent-weak); }
     .icon-btn { padding:8px 10px; font-size:1rem; line-height:1; }
+    /* 모바일: 등록·🌙는 윗줄, 이동 링크 4개는 아랫줄 2×2 균등 그리드 */
+    @media (max-width:540px) {
+      .tb-actions { width:100%; margin-left:0; display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+      .tb-actions a { text-align:center; }
+    }
 
     main { max-width:1140px; margin:18px auto; padding:0 16px 60px; }
     .card { background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:16px 18px; margin-bottom:16px; box-shadow:var(--shadow-sm); }
@@ -124,12 +129,12 @@
     <div class="topbar-inner">
       <div class="brand">🔧 정비 사례<small>KBS 전국 공용 지식DB</small></div>
       <button class="primary" id="openNew" style="padding:9px 16px">➕ 등록</button>
+      <button class="tb-btn icon-btn" id="themeToggle" title="라이트/다크 전환">🌙</button>
       <div class="tb-actions">
         <a href="index.html">🏠 홈</a>
         <a href="ai.html">🤖 AI 검색</a>
         <a href="daily.html">📋 일일업무일지</a>
         <a href="analysis.html">📊 데이터 분석</a>
-        <button class="tb-btn icon-btn" id="themeToggle" title="라이트/다크 전환">🌙</button>
       </div>
     </div>
   </div>
