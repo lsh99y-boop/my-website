@@ -164,10 +164,11 @@
     @media (max-width: 880px) {
       /* 상단바: 1줄=제목·🌙, 2줄=소속국·날짜·요일·날씨, 3줄=홈·검색·정비사례(균형) */
       .topbar-inner { gap:8px; padding:9px 12px; }
-      .brand { font-size:.98rem; flex:1 1 auto; }
-      #themeToggle, #installBtn { order:1; }
+      .brand { font-size:.98rem; }
+      .tb-office { order:0; }
+      #themeToggle { order:1; margin-left:auto; }
+      #installBtn { order:1; }
       .tb-fields { order:2; width:100%; }
-      .tb-fields .tb-office { flex:1 1 auto; }
       .tb-fields .tb-field[style*="96px"] { flex:1 1 130px; }
       .tb-actions { order:3; width:100%; margin-left:0; display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
       .tb-actions .tb-btn { text-align:center; padding:9px; font-size:.82rem; }
@@ -201,8 +202,8 @@
   <div class="topbar">
     <div class="topbar-inner">
       <div class="brand">📋 일일업무일지</div>
+      <div class="tb-office"><label>소속국</label><select id="office"></select></div>
       <div class="tb-fields">
-        <div class="tb-office"><label>소속국</label><select id="office"></select></div>
         <div class="tb-field"><label for="date">날짜</label><input type="date" id="date" /></div>
         <div class="tb-field"><label for="weekday">요일</label><input type="text" id="weekday" style="width:46px" readonly /></div>
         <div class="tb-field" style="min-width:96px"><label for="weather">날씨</label><input type="text" id="weather" placeholder="맑음" /></div>
