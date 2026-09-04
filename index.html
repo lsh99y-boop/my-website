@@ -16,6 +16,7 @@
     :root {
       --bg:#f5f8fc; --surface:#ffffff; --surface-2:#eef3f9; --line:#e2e8f1; --line-strong:#d3dcea;
       --ink:#0f1b2d; --muted:#5c6b80; --navy:#0e1a2e;
+      --logo-bg:#0e1a2e; --logo-bd:rgba(255,255,255,.08); --logo-gl:rgba(20,45,95,.28);
       --accent:#2f6bff; --accent-deep:#1b52e6; --accent-ink:#ffffff; --accent-weak:#eaf1ff; --accent-border:#c9dcff;
       --shadow-sm:0 1px 2px rgba(15,27,45,.06); --shadow:0 2px 4px rgba(15,27,45,.05), 0 16px 38px rgba(20,45,95,.12);
       --radius:16px;
@@ -24,12 +25,14 @@
     @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
       --bg:#0d1220; --surface:#141b2b; --surface-2:#1b2334; --line:#25304a; --line-strong:#31405f;
       --ink:#e8edf6; --muted:#93a1b8; --navy:#0b1220;
+      --logo-bg:#1b2a46; --logo-bd:rgba(91,139,255,.65); --logo-gl:rgba(91,139,255,.42);
       --accent:#5b8bff; --accent-deep:#7aa2ff; --accent-ink:#0b1220; --accent-weak:#182338; --accent-border:#2c3d5e;
       --shadow-sm:0 1px 2px rgba(0,0,0,.45); --shadow:0 2px 6px rgba(0,0,0,.45), 0 16px 38px rgba(0,0,0,.55);
     } }
     :root[data-theme="dark"] {
       --bg:#0d1220; --surface:#141b2b; --surface-2:#1b2334; --line:#25304a; --line-strong:#31405f;
       --ink:#e8edf6; --muted:#93a1b8; --navy:#0b1220;
+      --logo-bg:#1b2a46; --logo-bd:rgba(91,139,255,.65); --logo-gl:rgba(91,139,255,.42);
       --accent:#5b8bff; --accent-deep:#7aa2ff; --accent-ink:#0b1220; --accent-weak:#182338; --accent-border:#2c3d5e;
       --shadow-sm:0 1px 2px rgba(0,0,0,.45); --shadow:0 2px 6px rgba(0,0,0,.45), 0 16px 38px rgba(0,0,0,.55);
     }
@@ -46,7 +49,7 @@
     .hero { text-align:center; margin:14px 0 22px; }
     .emblem { position:relative; display:grid; place-items:center; width:200px; height:132px; margin:0 auto 12px; }
     .emblem .rings { position:absolute; top:50%; left:50%; width:230px; height:230px; transform:translate(-50%,-52%); pointer-events:none; }
-    .logo { position:relative; z-index:1; width:66px; height:66px; border-radius:17px; display:flex; align-items:center; justify-content:center; background:var(--navy); color:#fff; font-family:var(--font-head); font-size:1.35rem; font-weight:800; letter-spacing:.01em; box-shadow:0 8px 22px rgba(20,45,95,.28); }
+    .logo { position:relative; z-index:1; width:66px; height:66px; border-radius:17px; display:flex; align-items:center; justify-content:center; background:var(--logo-bg); border:1px solid var(--logo-bd); color:#fff; font-family:var(--font-head); font-size:1.35rem; font-weight:800; letter-spacing:.01em; box-shadow:0 8px 22px var(--logo-gl); }
     .logo::after { content:""; position:absolute; bottom:12px; width:26px; height:3px; border-radius:2px; background:linear-gradient(90deg,var(--accent),#7aa2ff); }
     .wordmark { font-family:var(--font-head); font-size:1.9rem; font-weight:800; line-height:1.1; letter-spacing:-.01em; color:var(--ink); }
     .uline { width:52px; height:4px; border-radius:3px; margin:9px auto 0; background:linear-gradient(90deg,var(--accent),#7aa2ff); }
