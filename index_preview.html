@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>KBS 전국 송중계소</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+  <script>try{var t=localStorage.getItem("ilji_theme");if(t)document.documentElement.setAttribute("data-theme",t);}catch(e){}</script>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <meta name="theme-color" content="#2f6bff" />
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+  <link rel="icon" href="icons/favicon-32.png" sizes="32x32" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="업무일지" />
+  <style>
+    :root {
+      --bg:#f5f8fc; --surface:#ffffff; --surface-2:#eef3f9; --line:#e2e8f1; --line-strong:#d3dcea;
+      --ink:#0f1b2d; --muted:#5c6b80; --navy:#0e1a2e;
+      --accent:#2f6bff; --accent-deep:#1b52e6; --accent-ink:#ffffff; --accent-weak:#eaf1ff; --accent-border:#c9dcff;
+      --shadow-sm:0 1px 2px rgba(15,27,45,.06); --shadow:0 2px 4px rgba(15,27,45,.05), 0 16px 38px rgba(20,45,95,.12);
+      --radius:16px;
+      --font-head:"Pretendard Variable",Pretendard,system-ui,sans-serif;
+    }
+    @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+      --bg:#0d1220; --surface:#141b2b; --surface-2:#1b2334; --line:#25304a; --line-strong:#31405f;
+      --ink:#e8edf6; --muted:#93a1b8; --navy:#0b1220;
+      --accent:#5b8bff; --accent-deep:#7aa2ff; --accent-ink:#0b1220; --accent-weak:#182338; --accent-border:#2c3d5e;
+      --shadow-sm:0 1px 2px rgba(0,0,0,.45); --shadow:0 2px 6px rgba(0,0,0,.45), 0 16px 38px rgba(0,0,0,.55);
+    } }
+    :root[data-theme="dark"] {
+      --bg:#0d1220; --surface:#141b2b; --surface-2:#1b2334; --line:#25304a; --line-strong:#31405f;
+      --ink:#e8edf6; --muted:#93a1b8; --navy:#0b1220;
+      --accent:#5b8bff; --accent-deep:#7aa2ff; --accent-ink:#0b1220; --accent-weak:#182338; --accent-border:#2c3d5e;
+      --shadow-sm:0 1px 2px rgba(0,0,0,.45); --shadow:0 2px 6px rgba(0,0,0,.45), 0 16px 38px rgba(0,0,0,.55);
+    }
+    * { box-sizing:border-box; }
+    body { font-family:"Pretendard Variable",Pretendard,system-ui,"Malgun Gothic",sans-serif; margin:0; background:var(--bg); color:var(--ink); -webkit-font-smoothing:antialiased; min-height:100vh; }
+
+    .top { display:flex; justify-content:flex-end; padding:14px 18px; }
+    .icon-btn { color:var(--accent); background:var(--surface); border:1px solid var(--accent-border); border-radius:9px; padding:8px 10px; font-size:1rem; line-height:1; cursor:pointer; }
+    .icon-btn:hover { background:var(--accent-weak); }
+
+    .wrap { max-width:780px; margin:0 auto; padding:2px 20px 70px; }
+
+    /* 히어로 — 전파 동심원 모티프 */
+    .hero { text-align:center; margin:14px 0 22px; }
+    .emblem { position:relative; display:grid; place-items:center; width:200px; height:132px; margin:0 auto 12px; }
+    .emblem .rings { position:absolute; top:50%; left:50%; width:230px; height:230px; transform:translate(-50%,-52%); pointer-events:none; }
+    .logo { position:relative; z-index:1; width:66px; height:66px; border-radius:17px; display:flex; align-items:center; justify-content:center; background:var(--navy); color:#fff; font-family:var(--font-head); font-size:1.35rem; font-weight:800; letter-spacing:.01em; box-shadow:0 8px 22px rgba(20,45,95,.28); }
+    .logo::after { content:""; position:absolute; bottom:12px; width:26px; height:3px; border-radius:2px; background:linear-gradient(90deg,var(--accent),#7aa2ff); }
+    .wordmark { font-family:var(--font-head); font-size:1.9rem; font-weight:800; line-height:1.1; letter-spacing:-.01em; color:var(--ink); }
+    .uline { width:52px; height:4px; border-radius:3px; margin:9px auto 0; background:linear-gradient(90deg,var(--accent),#7aa2ff); }
+    .subtitle { font-size:.86rem; color:var(--muted); margin-top:10px; letter-spacing:.01em; }
+
+    /* 통합 검색 */
+    .search { background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow); padding:18px; }
+    .search .lead { font-size:.92rem; color:var(--muted); margin-bottom:11px; display:flex; align-items:center; gap:8px; flex-wrap:wrap; justify-content:center; }
+    .lead b { color:var(--ink); }
+    .badge { font-size:.72rem; font-weight:700; color:var(--accent); background:var(--accent-weak); border:1px solid var(--accent-border); border-radius:20px; padding:3px 10px; }
+    .sform { display:flex; gap:9px; }
+    .sform input { flex:1; min-width:0; font:inherit; color:var(--ink); background:var(--surface); border:1.5px solid var(--line-strong); border-radius:12px; padding:14px 16px; }
+    .sform input:focus { outline:none; border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-weak); }
+    .sform button { background:var(--accent); color:var(--accent-ink); border:0; border-radius:12px; font-weight:700; padding:0 22px; cursor:pointer; white-space:nowrap; display:flex; align-items:center; gap:7px; }
+    .sform button:hover { background:var(--accent-deep); }
+    .exs { display:flex; flex-wrap:wrap; gap:7px; margin-top:12px; justify-content:center; }
+    .ex { background:var(--surface-2); border:1px solid var(--line); border-radius:20px; padding:6px 12px; font-size:.8rem; color:var(--ink); cursor:pointer; }
+    .ex:hover { background:var(--accent-weak); border-color:var(--accent-border); color:var(--accent); }
+
+    /* 업무 도구 */
+    .toolhead { font-family:var(--font-head); font-size:.82rem; font-weight:800; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); margin:32px 4px 12px; }
+    .cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:14px; }
+    .tile { display:flex; flex-direction:column; gap:9px; text-decoration:none; color:inherit; background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:20px 18px; box-shadow:var(--shadow-sm); transition:transform .12s, box-shadow .12s, border-color .12s; }
+    .tile:hover { transform:translateY(-3px); box-shadow:var(--shadow); border-color:var(--accent-border); }
+    .tile .ic { width:46px; height:46px; border-radius:13px; background:var(--accent-weak); border:1px solid var(--accent-border); display:flex; align-items:center; justify-content:center; color:var(--accent); }
+    .tile .ic svg { width:24px; height:24px; }
+    .tile .t { font-size:1.08rem; font-weight:800; letter-spacing:-.01em; }
+    .tile .d { font-size:.84rem; color:var(--muted); line-height:1.5; }
+    .tile .go { margin-top:auto; font-size:.82rem; font-weight:700; color:var(--accent); display:flex; align-items:center; gap:5px; }
+
+    .foot { text-align:center; color:var(--muted); font-size:.82rem; margin-top:30px; }
+    .foot a { color:var(--accent); text-decoration:none; font-weight:600; }
+
+    @media (max-width:540px) {
+      .top { padding:10px 14px; }
+      .wrap { padding:0 16px 36px; }
+      .sform { flex-direction:column; }
+      .sform button { padding:13px; justify-content:center; }
+      .hero { margin:6px 0 14px; }
+      .emblem { width:160px; height:104px; margin-bottom:8px; }
+      .emblem .rings { width:180px; height:180px; }
+      .logo { width:56px; height:56px; font-size:1.15rem; }
+      .wordmark { font-size:1.5rem; }
+      .search { padding:15px; }
+      .toolhead { margin:22px 4px 10px; }
+      .cards { grid-template-columns:repeat(3,1fr); gap:9px; }
+      .tile { padding:15px 9px; align-items:center; text-align:center; gap:8px; }
+      .tile .t { font-size:.9rem; }
+      .tile .d, .tile .go { display:none; }
+    }
+  </style>
+</head>
+<body>
+  <div id="pinGate" style="position:fixed;inset:0;background:#0b1220;z-index:9999;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px;color:#e8edf6;padding:20px;text-align:center">
+    <div style="font-size:1.3rem;font-weight:800">📡 KBS 전국 송중계소</div>
+    <div style="color:#93a1b8;font-size:.9rem">접속 PIN을 입력하세요</div>
+    <input id="pinInput" type="password" inputmode="numeric" maxlength="12" placeholder="PIN"
+           style="font-size:1.4rem;text-align:center;letter-spacing:.25em;padding:10px 16px;border-radius:8px;border:1px solid #31405f;background:#141b2b;color:#fff;width:200px" />
+    <button id="pinOk" style="background:#2f6bff;color:#fff;padding:11px 28px;font-size:1rem;border:0;border-radius:8px;cursor:pointer;font-weight:700">확인</button>
+    <div id="pinErr" style="color:#ff8a80;font-size:.85rem;height:1.1em"></div>
+  </div>
+
+  <div class="top">
+    <button class="icon-btn" id="themeToggle" title="라이트/다크 전환">🌙</button>
+  </div>
+
+  <div class="wrap">
+    <div class="hero">
+      <div class="emblem">
+        <svg class="rings" viewBox="0 0 200 200" fill="none" aria-hidden="true">
+          <g stroke="var(--accent)" stroke-width="1.4">
+            <circle cx="100" cy="100" r="34" stroke-opacity=".30"/>
+            <circle cx="100" cy="100" r="58" stroke-opacity=".20"/>
+            <circle cx="100" cy="100" r="82" stroke-opacity=".12"/>
+            <circle cx="100" cy="100" r="99" stroke-opacity=".06"/>
+          </g>
+        </svg>
+        <div class="logo">KBS</div>
+      </div>
+      <div class="wordmark">전국 송·중계소</div>
+      <div class="uline"></div>
+      <div class="subtitle">일일업무일지 · 정비사례 · 데이터 분석</div>
+    </div>
+
+    <div class="search">
+      <div class="lead">🤖 정비사례·업무일지를 <b>자연어로</b> 검색해보세요 <span class="badge">🔒 데이터 외부 전송 없음</span></div>
+      <form class="sform" id="sform">
+        <input id="q" type="text" placeholder="예: 계룡산 송신기 엑사이터 관련 정비내용 찾아줘" autocomplete="off" />
+        <button type="submit"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>통합 검색</button>
+      </form>
+      <div class="exs" id="exs"></div>
+    </div>
+
+    <div class="toolhead">업무 도구</div>
+    <div class="cards">
+      <a class="tile" href="daily.html">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4Z"/></svg></div>
+        <div class="t">일일업무일지</div>
+        <div class="d">매일 시설별 업무를 작성하고 한글파일로 다운로드</div>
+        <div class="go">작성하기 →</div>
+      </a>
+      <a class="tile" href="cases.html">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg></div>
+        <div class="t">정비사례</div>
+        <div class="d">고장·정비 사례를 등록·검색하고 정비보고서 생성 (전국 공용)</div>
+        <div class="go">입력·검색 →</div>
+      </a>
+      <a class="tile" href="analysis.html">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg></div>
+        <div class="t">데이터 분석</div>
+        <div class="d">모델별 고장·시설별·월별 추세 통계</div>
+        <div class="go">분석 보기 →</div>
+      </a>
+    </div>
+
+    <div class="foot">📖 처음이면 <a href="help.html">사용법</a>을 먼저 보세요 · 팀 공용 PIN 7590</div>
+  </div>
+
+  <script>
+    (function () {
+      var APP_PIN = "7590";
+      var gate = document.getElementById("pinGate");
+      try { if (localStorage.getItem("ilji_pin_ok") === APP_PIN) gate.remove(); } catch (e) {}
+      if (gate.parentNode) {
+        var inp = document.getElementById("pinInput"), err = document.getElementById("pinErr");
+        var go = function () {
+          if (inp.value === APP_PIN) { try { localStorage.setItem("ilji_pin_ok", APP_PIN); } catch (e) {} gate.remove(); document.getElementById("q").focus(); }
+          else { err.textContent = "PIN이 틀렸어요"; inp.value = ""; inp.focus(); }
+        };
+        document.getElementById("pinOk").addEventListener("click", go);
+        inp.addEventListener("keydown", function (e) { if (e.key === "Enter") go(); });
+        inp.focus();
+      }
+      document.getElementById("sform").addEventListener("submit", function (e) {
+        e.preventDefault();
+        var q = document.getElementById("q").value.trim();
+        location.href = "ai.html" + (q ? "?q=" + encodeURIComponent(q) : "");
+      });
+      var EXS = ["최근 정비사례", "계룡산 반복고장", "엑사이터 관련 정비", "GPS 관련 정비를 한 시설"];
+      var exs = document.getElementById("exs");
+      exs.innerHTML = EXS.map(function (s) { return '<span class="ex">' + s + '</span>'; }).join("");
+      Array.prototype.forEach.call(exs.querySelectorAll(".ex"), function (el) {
+        el.addEventListener("click", function () { location.href = "ai.html?q=" + encodeURIComponent(el.textContent); });
+      });
+      var tbtn = document.getElementById("themeToggle");
+      function paint(t) { var r = document.documentElement; if (t) r.setAttribute("data-theme", t); else r.removeAttribute("data-theme"); tbtn.textContent = (t ? t === "dark" : matchMedia("(prefers-color-scheme: dark)").matches) ? "☀️" : "🌙"; }
+      paint(localStorage.getItem("ilji_theme"));
+      tbtn.addEventListener("click", function () { var r = document.documentElement; var cur = r.getAttribute("data-theme") || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"); var nx = cur === "dark" ? "light" : "dark"; try { localStorage.setItem("ilji_theme", nx); } catch (e) {} paint(nx); });
+    })();
+  </script>
+</body>
+</html>
