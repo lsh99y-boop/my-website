@@ -210,7 +210,7 @@
       </div>
       <div class="tb-actions">
         <a class="tb-btn" href="index.html">🏠 홈</a>
-        <button class="tb-btn" id="searchOpen">🔍 검색</button>
+        <a class="tb-btn" href="ai.html">🔍 검색</a>
         <a class="tb-btn" href="cases.html">🔧 정비사례입력</a>
       </div>
       <button class="tb-btn" id="installBtn" style="display:none">📲 앱 설치</button>
@@ -246,25 +246,11 @@
     </div>
   </div>
 
-  <div id="searchModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:8000;padding:16px;overflow:auto">
-    <div style="max-width:720px;margin:24px auto;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:14px;padding:18px;box-shadow:var(--shadow)">
-      <div style="display:flex;justify-content:space-between;align-items:center">
-        <h2 style="margin:0;font-size:1.05rem">🔍 지난 일지 검색</h2>
-        <button id="searchClose" class="ghost" style="padding:8px 14px">닫기</button>
-      </div>
-      <div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap">
-        <input id="searchQ" placeholder="내용 키워드 (예: 정전, 냉각, 활차…)" style="flex:1;min-width:180px;border:1px solid var(--line-strong);border-radius:8px;padding:8px 10px;background:var(--surface)" />
-        <select id="searchOffice" style="min-width:110px;border:1px solid var(--line-strong);border-radius:8px;padding:8px 10px;background:var(--surface)"></select>
-        <button class="primary" id="searchGo">검색</button>
-      </div>
-      <div id="searchResults" style="margin-top:14px"><div style="color:var(--muted);font-size:.9rem;padding:8px 2px">키워드를 입력하고 검색하세요.</div></div>
-    </div>
-  </div>
 
   <script type="module">
     import { buildHwpx, buildMonthHwpx, downloadBlob } from "./hwpx.js";
     import { compressImage } from "./photo.js";
-    import { saveLog, loadLog, cleanupOld, listMonth, searchLogs, loadPrevFacility } from "./storage.js";
+    import { saveLog, loadLog, cleanupOld, listMonth, loadPrevFacility } from "./storage.js";
     import { uploadPhoto, photoUrl, removePhoto, fetchPhotoBytes } from "./photoStorage.js";
     import { facilitiesFor, OFFICE_LIST, labelForKey } from "./sites.js";
     import { fetchWeather } from "./weather.js";
@@ -872,37 +858,8 @@
       }
     });
 
-    // ===== 지난 일지 검색 =====
-    const searchModal = document.getElementById("searchModal");
-    const searchOfficeEl = document.getElementById("searchOffice");
-    searchOfficeEl.innerHTML = `<option value="">전체 국</option>` + OFFICE_LIST.map((o) => `<option>${o}</option>`).join("");
-    document.getElementById("searchOpen").addEventListener("click", () => { searchModal.style.display = "block"; document.getElementById("searchQ").focus(); });
-    document.getElementById("searchClose").addEventListener("click", () => searchModal.style.display = "none");
-    searchModal.addEventListener("click", (e) => { if (e.target === searchModal) searchModal.style.display = "none"; });
-
-    async function runSearch() {
-      const q = document.getElementById("searchQ").value.trim();
-      const box = document.getElementById("searchResults");
-      if (!q) { box.innerHTML = `<div style="color:#8a94a3;padding:8px">키워드를 입력하세요.</div>`; return; }
-      box.innerHTML = `<div style="color:#8a94a3;padding:8px">검색 중…</div>`;
-      try {
-        const rows = await searchLogs(q, searchOfficeEl.value);
-        if (!rows.length) { box.innerHTML = `<div style="color:#8a94a3;padding:8px">결과가 없어요.</div>`; return; }
-        const esc = (s) => (s || "").replace(/</g, "&lt;");
-        box.innerHTML = `<div style="font-size:.82rem;color:#667;margin-bottom:6px">${rows.length}건</div>` + rows.map((r) => `
-          <div class="sr" data-office="${esc(r.office)}" data-date="${r.log_date}" style="border:1px solid var(--line);border-radius:8px;padding:9px 11px;margin-bottom:8px;cursor:pointer">
-            <div style="font-size:.8rem;color:#667"><b style="color:#2f6fed">${esc(r.office)}</b> · ${r.log_date} · ${esc(labelForKey(r.key))}</div>
-            <div style="font-size:.9rem;margin-top:3px">${esc(r.snippet)}</div>
-          </div>`).join("");
-        for (const el of box.querySelectorAll(".sr"))
-          el.addEventListener("click", () => jumpTo(el.dataset.office, el.dataset.date));
-      } catch (e) { box.innerHTML = `<div style="color:#b3261e;padding:8px">검색 오류: ${e.message}</div>`; }
-    }
-    document.getElementById("searchGo").addEventListener("click", runSearch);
-    document.getElementById("searchQ").addEventListener("keydown", (e) => { if (e.key === "Enter") runSearch(); });
 
     async function jumpTo(office, date) {
-      searchModal.style.display = "none";
       currentOffice = office;
       localStorage.setItem("ilji_office", office);
       officeEl.value = office;
