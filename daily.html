@@ -912,6 +912,13 @@
       setStatus(`🔍 ${office} ${date} 로 이동`, "ok");
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
+
+    // AI 검색 등에서 특정 국·날짜로 바로 열기: daily.html?office=<국>&date=<YYYY-MM-DD>
+    (function () {
+      const p = new URLSearchParams(location.search);
+      const o = p.get("office"), d = p.get("date");
+      if (o && d && OFFICE_LIST.includes(o)) jumpTo(o, d);
+    })();
   </script>
 </body>
 </html>

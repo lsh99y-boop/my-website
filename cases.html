@@ -506,6 +506,12 @@
 
     clearForm();
     doSearch();
+
+    // AI 검색 등에서 특정 사례로 바로 열기: cases.html?case=<id>
+    (function () {
+      const cid = new URLSearchParams(location.search).get("case");
+      if (cid) openDetail(+cid);
+    })();
   </script>
   <script>
     (function () {

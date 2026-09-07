@@ -81,6 +81,10 @@
     .rec .kv { font-size:.9rem; margin-top:3px; line-height:1.5; }
     .rec .kv b { color:var(--muted); font-weight:700; font-size:.8rem; }
     .rec .snip { font-size:.9rem; margin-top:4px; white-space:pre-wrap; line-height:1.5; }
+    .rec .acts { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+    .rec .acts a { font-size:.8rem; font-weight:700; text-decoration:none; color:var(--accent); background:var(--accent-weak); border:1px solid var(--accent-border); border-radius:8px; padding:5px 11px; }
+    .rec .acts a:hover { background:color-mix(in srgb, var(--accent) 18%, var(--surface)); }
+    .rec .acts a.file { color:var(--green); background:color-mix(in srgb, var(--green) 13%, var(--surface)); border-color:color-mix(in srgb, var(--green) 32%, var(--surface)); }
     .empty { color:var(--muted); text-align:center; padding:18px 8px; font-size:.9rem; }
     .note { font-size:.8rem; color:var(--muted); margin-top:18px; text-align:center; line-height:1.6; }
   </style>
@@ -143,6 +147,7 @@
 
   <script type="module">
     import { knowledgeSearch, buildContext, extractConditions } from "./aiSearch.js";
+    import { docUrl } from "./docStorage.js";
 
     const APP_PIN = "7590";
     (function () {
@@ -245,6 +250,10 @@
           <div class="model">${esc(f.model || "(모델 미입력)")}</div>
           ${f.symptom ? `<div class="kv"><b>증상</b> ${esc(f.symptom)}</div>` : ""}
           ${f.action ? `<div class="kv"><b>조치</b> ${esc(f.action)}</div>` : ""}
+          <div class="acts">
+            <a href="cases.html?case=${encodeURIComponent(f.id)}">🔧 상세 열기</a>
+            ${f.doc_path ? `<a class="file" href="${docUrl(f.doc_path)}" target="_blank" rel="noopener">📎 첨부파일 보기</a>` : ""}
+          </div>
         </div>`).join("");
     }
     function renderLogs(list) {
@@ -255,6 +264,9 @@
         <div class="rec">
           <div class="top"><span class="tag src-l">일일업무일지</span><span class="tag">${esc(l.office)}</span><span class="tag">${esc(l.site)}</span><span style="margin-left:auto">${esc(l.date)}</span></div>
           <div class="snip">${esc(l.text)}</div>
+          <div class="acts">
+            <a href="daily.html?office=${encodeURIComponent(l.office)}&date=${encodeURIComponent(l.date)}">📋 이 날 일지 열기</a>
+          </div>
         </div>`).join("");
     }
 

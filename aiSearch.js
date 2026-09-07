@@ -73,7 +73,7 @@ async function searchFaults(cond) {
     if (cond.sites.length && !siteHit) continue; // 시설을 지정했으면 다른 시설 제외
     if (!cond.sites.length && !cond.equips.length && !cond.topics.length) score = 1; // 조건 없음 → 최신
     if (score <= 0) continue;
-    out.push({ type: "fault", id: r.id, date: r.fault_date || "", office: r.office || "", site: r.site || "", equip: r.equip_type || "", model: r.model || "", symptom: r.symptom || "", action: r.action || "", score, tier: siteHit && equipHit && topicHits ? 1 : siteHit && equipHit ? 2 : equipHit && topicHits ? 3 : 4 });
+    out.push({ type: "fault", id: r.id, date: r.fault_date || "", office: r.office || "", site: r.site || "", equip: r.equip_type || "", model: r.model || "", symptom: r.symptom || "", action: r.action || "", doc_path: r.doc_path || "", score, tier: siteHit && equipHit && topicHits ? 1 : siteHit && equipHit ? 2 : equipHit && topicHits ? 3 : 4 });
   }
   out.sort((a, b) => b.score - a.score || (b.date > a.date ? 1 : -1));
   return out.slice(0, 15);
