@@ -52,7 +52,11 @@
     @keyframes sigwave { 0%{opacity:0} 12%{opacity:1} 55%{opacity:1} 80%{opacity:.08} 100%{opacity:.08} }
     .appicon .w1 { animation:sigwave 2.2s ease-in-out .15s infinite; }
     .appicon .w2 { animation:sigwave 2.2s ease-in-out .75s infinite; }
-    @media (prefers-reduced-motion: reduce) { .appicon .w1, .appicon .w2 { animation:none; opacity:1; } }
+    @keyframes writing { 0%{transform:translate(-46px,0)} 14%{transform:translate(-30px,-12px)} 28%{transform:translate(-14px,2px)} 42%{transform:translate(4px,-12px)} 56%{transform:translate(22px,2px)} 70%{transform:translate(46px,-6px)} 80%{transform:translate(46px,0)} 100%{transform:translate(-46px,0)} }
+    @keyframes drawline { 0%{stroke-dashoffset:320} 58%{stroke-dashoffset:0} 88%{stroke-dashoffset:0} 100%{stroke-dashoffset:320} }
+    .appicon .pencil { animation:writing 2.6s ease-in-out infinite; }
+    .appicon .line1 { stroke-dasharray:320; animation:drawline 2.6s ease-in-out infinite; }
+    @media (prefers-reduced-motion: reduce) { .appicon .w1, .appicon .w2 { animation:none; opacity:1; } .appicon .pencil { animation:none; transform:none; } .appicon .line1 { animation:none; stroke-dashoffset:0; } }
     .wordmark { display:inline-block; font-family:var(--font-head); font-size:1.9rem; font-weight:800; line-height:1.1; letter-spacing:-.01em; color:var(--ink); }
     .wordmark::after { content:""; display:block; height:4px; border-radius:3px; margin:2px auto 0; background:linear-gradient(90deg,var(--accent),#7aa2ff); }
     .subtitle { font-size:.86rem; color:var(--muted); margin-top:10px; letter-spacing:.01em; }
@@ -124,10 +128,12 @@
           <rect width="1024" height="1024" fill="#161826"/>
           <defs><linearGradient id="paper" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#232532"/><stop offset="1" stop-color="#161826"/></linearGradient></defs>
           <path d="M312 692 H712 L816 924 H208 Z" fill="url(#paper)" stroke="#3f424d" stroke-width="10" stroke-linejoin="round"/>
-          <path d="M352 786 H672" stroke="#595d6c" stroke-width="34" stroke-linecap="round"/>
+          <path class="line1" d="M352 786 H672" stroke="#595d6c" stroke-width="34" stroke-linecap="round"/>
           <path d="M300 872 H556" stroke="#3f424d" stroke-width="38" stroke-linecap="round"/>
-          <rect x="472" y="348" width="80" height="278" rx="18" fill="#cfd3e5"/>
-          <path d="M472 610 L512 716 L552 610 Z" fill="#b5abfc"/>
+          <g class="pencil">
+            <rect x="472" y="348" width="80" height="278" rx="18" fill="#cfd3e5"/>
+            <path d="M472 610 L512 716 L552 610 Z" fill="#b5abfc"/>
+          </g>
           <circle cx="512" cy="300" r="46" fill="#b5abfc"/>
           <path d="M384 232 A196 196 0 0 0 384 368" fill="none" stroke="#b5abfc" stroke-width="42" stroke-linecap="round" class="w1"/>
           <path d="M640 232 A196 196 0 0 1 640 368" fill="none" stroke="#b5abfc" stroke-width="42" stroke-linecap="round" class="w1"/>
