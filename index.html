@@ -49,9 +49,15 @@
     .hero { text-align:center; margin:14px 0 22px; }
     .emblem { display:grid; place-items:center; margin:2px auto 12px; }
     .appicon { width:116px; height:116px; border-radius:27px; overflow:hidden; box-shadow:0 12px 28px rgba(20,40,80,.30); display:block; }
-    @keyframes writing { 0%{transform:translate(-46px,0)} 14%{transform:translate(-30px,-12px)} 28%{transform:translate(-14px,2px)} 42%{transform:translate(4px,-12px)} 56%{transform:translate(22px,2px)} 70%{transform:translate(46px,-6px)} 80%{transform:translate(46px,0)} 100%{transform:translate(-46px,0)} }
-    .appicon .pencil { animation:writing 2.6s ease-in-out infinite; }
-    @media (prefers-reduced-motion: reduce) { .appicon .pencil { animation:none; transform:none; } }
+    @keyframes writeKBS { 0%{transform:translate(-96px,0)} 8%{transform:translate(-96px,-9px)} 18%{transform:translate(-96px,2px)} 33%{transform:translate(0,-9px)} 44%{transform:translate(0,2px)} 58%{transform:translate(96px,-9px)} 69%{transform:translate(96px,2px)} 82%{transform:translate(96px,0)} 100%{transform:translate(-96px,0)} }
+    @keyframes kA { 0%,12%{opacity:0} 18%,88%{opacity:1} 96%,100%{opacity:0} }
+    @keyframes kB { 0%,38%{opacity:0} 44%,88%{opacity:1} 96%,100%{opacity:0} }
+    @keyframes kS { 0%,63%{opacity:0} 69%,88%{opacity:1} 96%,100%{opacity:0} }
+    .appicon .pencil { animation:writeKBS 4.4s ease-in-out infinite; }
+    .appicon .kA { animation:kA 4.4s ease-in-out infinite; }
+    .appicon .kB { animation:kB 4.4s ease-in-out infinite; }
+    .appicon .kS { animation:kS 4.4s ease-in-out infinite; }
+    @media (prefers-reduced-motion: reduce) { .appicon .pencil{animation:none;transform:none} .appicon .kA,.appicon .kB,.appicon .kS{animation:none;opacity:1} }
     .wordmark { display:inline-block; font-family:var(--font-head); font-size:1.9rem; font-weight:800; line-height:1.1; letter-spacing:-.01em; color:var(--ink); }
     .wordmark::after { content:""; display:block; height:4px; border-radius:3px; margin:2px auto 0; background:linear-gradient(90deg,var(--accent),#7aa2ff); }
     .subtitle { font-size:.86rem; color:var(--muted); margin-top:10px; letter-spacing:.01em; }
@@ -124,11 +130,15 @@
           <defs><linearGradient id="paper" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#232532"/><stop offset="1" stop-color="#161826"/></linearGradient></defs>
           <path d="M312 568 H712 L816 800 H208 Z" fill="url(#paper)" stroke="#3f424d" stroke-width="10" stroke-linejoin="round"/>
           <path d="M300 748 H556" stroke="#3f424d" stroke-width="38" stroke-linecap="round"/>
-          <text x="512" y="690" text-anchor="middle" font-family="'Pretendard Variable',Pretendard,Arial,sans-serif" font-weight="800" font-size="150" fill="#b5abfc">KBS</text>
+          <g font-family="'Pretendard Variable',Pretendard,Arial,sans-serif" font-weight="800" font-size="150" text-anchor="middle">
+            <g class="kA"><text x="422" y="699" fill="#12296b">K</text><text x="419" y="694" fill="#1b3f95">K</text><text x="416" y="690" fill="#4f8bff">K</text></g>
+            <g class="kB"><text x="518" y="699" fill="#12296b">B</text><text x="515" y="694" fill="#1b3f95">B</text><text x="512" y="690" fill="#4f8bff">B</text></g>
+            <g class="kS"><text x="614" y="699" fill="#12296b">S</text><text x="611" y="694" fill="#1b3f95">S</text><text x="608" y="690" fill="#4f8bff">S</text></g>
+          </g>
           <g class="pencil">
             <g transform="rotate(18 512 575)">
               <rect x="472" y="207" width="80" height="278" rx="18" fill="#cfd3e5"/>
-              <path d="M472 469 L512 575 L552 469 Z" fill="#b5abfc"/>
+              <path d="M472 469 L512 575 L552 469 Z" fill="#4f8bff"/>
             </g>
           </g>
         </svg>
