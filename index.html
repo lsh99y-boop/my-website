@@ -126,19 +126,22 @@
     <div class="hero">
       <div class="emblem">
         <svg class="appicon" viewBox="0 0 1024 1024" role="img" aria-label="KBS 업무일지 앱 아이콘">
-          <rect width="1024" height="1024" fill="#161826"/>
-          <defs><linearGradient id="paper" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#232532"/><stop offset="1" stop-color="#161826"/></linearGradient></defs>
-          <path d="M312 568 H712 L816 800 H208 Z" fill="url(#paper)" stroke="#3f424d" stroke-width="10" stroke-linejoin="round"/>
-          <path d="M300 748 H556" stroke="#3f424d" stroke-width="38" stroke-linecap="round"/>
-          <g font-family="'Pretendard Variable',Pretendard,Arial,sans-serif" font-weight="800" font-size="150" text-anchor="middle">
-            <g class="kA"><text x="422" y="699" fill="#12296b">K</text><text x="419" y="694" fill="#1b3f95">K</text><text x="416" y="690" fill="#4f8bff">K</text></g>
-            <g class="kB"><text x="518" y="699" fill="#12296b">B</text><text x="515" y="694" fill="#1b3f95">B</text><text x="512" y="690" fill="#4f8bff">B</text></g>
-            <g class="kS"><text x="614" y="699" fill="#12296b">S</text><text x="611" y="694" fill="#1b3f95">S</text><text x="608" y="690" fill="#4f8bff">S</text></g>
+          <defs>
+            <linearGradient id="ibg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#6d63ff"/><stop offset="1" stop-color="#a24bff"/></linearGradient>
+            <filter id="ksh" x="-30%" y="-30%" width="160%" height="170%"><feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#140a3c" flood-opacity="0.42"/></filter>
+          </defs>
+          <rect width="1024" height="1024" fill="url(#ibg)"/>
+          <path d="M312 568 H712 L816 800 H208 Z" fill="#ffffff" fill-opacity="0.13" stroke="#ffffff" stroke-opacity="0.6" stroke-width="10" stroke-linejoin="round"/>
+          <path d="M300 748 H556" stroke="#ffffff" stroke-opacity="0.55" stroke-width="38" stroke-linecap="round"/>
+          <g filter="url(#ksh)" font-family="'Pretendard Variable',Pretendard,Arial,sans-serif" font-weight="800" font-size="150" text-anchor="middle" fill="#ffffff">
+            <text class="kA" x="416" y="690">K</text>
+            <text class="kB" x="512" y="690">B</text>
+            <text class="kS" x="608" y="690">S</text>
           </g>
           <g class="pencil">
             <g transform="rotate(18 512 575)">
-              <rect x="472" y="207" width="80" height="278" rx="18" fill="#cfd3e5"/>
-              <path d="M472 469 L512 575 L552 469 Z" fill="#4f8bff"/>
+              <rect x="472" y="207" width="80" height="278" rx="18" fill="#ffffff"/>
+              <path d="M472 469 L512 575 L552 469 Z" fill="#ffffff"/>
             </g>
           </g>
         </svg>
