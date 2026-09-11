@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
   <script>try{var t=localStorage.getItem("ilji_theme");if(t)document.documentElement.setAttribute("data-theme",t);}catch(e){}</script>
   <link rel="manifest" href="manifest.webmanifest" />
-  <meta name="theme-color" content="#2f6bff" />
+  <meta name="theme-color" content="#7a5cff" />
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
   <link rel="icon" href="icons/favicon-32.png" sizes="32x32" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -17,7 +17,7 @@
       --bg:#f5f8fc; --surface:#ffffff; --surface-2:#eef3f9; --line:#e2e8f1; --line-strong:#d3dcea;
       --ink:#0f1b2d; --muted:#5c6b80; --navy:#0e1a2e;
       --logo-bg:#0e1a2e; --logo-bd:rgba(255,255,255,.08); --logo-gl:rgba(20,45,95,.28);
-      --accent:#2f6bff; --accent-deep:#1b52e6; --accent-ink:#ffffff; --accent-weak:#eaf1ff; --accent-border:#c9dcff;
+      --accent:#7a5cff; --accent-deep:#5b3fe0; --accent-ink:#ffffff; --accent-weak:#f1edff; --accent-border:#ddd4ff;
       --shadow-sm:0 1px 2px rgba(15,27,45,.06); --shadow:0 2px 4px rgba(15,27,45,.05), 0 16px 38px rgba(20,45,95,.12);
       --radius:16px;
       --font-head:"Pretendard Variable",Pretendard,system-ui,sans-serif;
@@ -26,14 +26,14 @@
       --bg:#0d1220; --surface:#141b2b; --surface-2:#1b2334; --line:#25304a; --line-strong:#31405f;
       --ink:#e8edf6; --muted:#93a1b8; --navy:#0b1220;
       --logo-bg:#1b2a46; --logo-bd:rgba(91,139,255,.65); --logo-gl:rgba(91,139,255,.42);
-      --accent:#5b8bff; --accent-deep:#7aa2ff; --accent-ink:#0b1220; --accent-weak:#182338; --accent-border:#2c3d5e;
+      --accent:#9d8cff; --accent-deep:#b6a6ff; --accent-ink:#0b1220; --accent-weak:#241f3c; --accent-border:#3d3670;
       --shadow-sm:0 1px 2px rgba(0,0,0,.45); --shadow:0 2px 6px rgba(0,0,0,.45), 0 16px 38px rgba(0,0,0,.55);
     } }
     :root[data-theme="dark"] {
       --bg:#0d1220; --surface:#141b2b; --surface-2:#1b2334; --line:#25304a; --line-strong:#31405f;
       --ink:#e8edf6; --muted:#93a1b8; --navy:#0b1220;
       --logo-bg:#1b2a46; --logo-bd:rgba(91,139,255,.65); --logo-gl:rgba(91,139,255,.42);
-      --accent:#5b8bff; --accent-deep:#7aa2ff; --accent-ink:#0b1220; --accent-weak:#182338; --accent-border:#2c3d5e;
+      --accent:#9d8cff; --accent-deep:#b6a6ff; --accent-ink:#0b1220; --accent-weak:#241f3c; --accent-border:#3d3670;
       --shadow-sm:0 1px 2px rgba(0,0,0,.45); --shadow:0 2px 6px rgba(0,0,0,.45), 0 16px 38px rgba(0,0,0,.55);
     }
     * { box-sizing:border-box; }
@@ -59,7 +59,7 @@
     .appicon .kS { animation:kS 4.4s ease-in-out infinite; }
     @media (prefers-reduced-motion: reduce) { .appicon .pencil{animation:none;transform:none} .appicon .kA,.appicon .kB,.appicon .kS{animation:none;opacity:1} }
     .wordmark { display:inline-block; font-family:var(--font-head); font-size:1.9rem; font-weight:800; line-height:1.1; letter-spacing:-.01em; color:var(--ink); }
-    .wordmark::after { content:""; display:block; height:4px; border-radius:3px; margin:2px auto 0; background:linear-gradient(90deg,var(--accent),#7aa2ff); }
+    .wordmark::after { content:""; display:block; height:4px; border-radius:3px; margin:2px auto 0; background:linear-gradient(90deg,#6d63ff,#a24bff); }
     .subtitle { font-size:.86rem; color:var(--muted); margin-top:10px; letter-spacing:.01em; }
 
     /* 통합 검색 */
@@ -114,7 +114,7 @@
     <div style="color:#93a1b8;font-size:.9rem">접속 PIN을 입력하세요</div>
     <input id="pinInput" type="password" inputmode="numeric" maxlength="12" placeholder="PIN"
            style="font-size:1.4rem;text-align:center;letter-spacing:.25em;padding:10px 16px;border-radius:8px;border:1px solid #31405f;background:#141b2b;color:#fff;width:200px" />
-    <button id="pinOk" style="background:#2f6bff;color:#fff;padding:11px 28px;font-size:1rem;border:0;border-radius:8px;cursor:pointer;font-weight:700">확인</button>
+    <button id="pinOk" style="background:#7a5cff;color:#fff;padding:11px 28px;font-size:1rem;border:0;border-radius:8px;cursor:pointer;font-weight:700">확인</button>
     <div id="pinErr" style="color:#ff8a80;font-size:.85rem;height:1.1em"></div>
   </div>
 
