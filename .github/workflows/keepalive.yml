@@ -1,8 +1,9 @@
 name: Supabase keep-alive
 
 # 무료 플랜 자동 일시정지(약 7일 미사용) 방지용.
-# 매일 1회 Supabase 테이블을 1건 조회해 프로젝트를 Active 상태로 유지한다.
-# (publishable 키는 이미 공개 키이므로 그대로 사용)
+# 1) 매일 Supabase 테이블을 1건 조회해 프로젝트를 Active 상태로 유지
+# 2) 매월 1일·15일에 빈 커밋을 남겨, GitHub이 "60일 미활동 시 예약 워크플로 자동 비활성화"하는 것을 방지
+#    → 사람이 깃허브에 접속하지 않아도 스스로 계속 돈다.
 
 on:
   schedule:
@@ -10,13 +11,16 @@ on:
   workflow_dispatch:          # Actions 탭에서 수동 실행 가능
 
 permissions:
-  contents: read
+  contents: write             # 월 1~2회 자체 커밋(활동 유지)에 필요
 
 jobs:
-  ping:
+  keepalive:
     runs-on: ubuntu-latest
     steps:
-      - name: Ping Supabase REST (keep project active)
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Ping Supabase REST (프로젝트 Active 유지)
         run: |
           URL="https://corgddhyokbylsfdclps.supabase.co/rest/v1/fault_cases?select=id&limit=1"
           KEY="sb_publishable_OVLf_f8LN0gRZlR-8eGTdA_v6DxLLjb"
@@ -30,4 +34,18 @@ jobs:
           else
             echo "⚠️ 예상과 다른 응답($code). 프로젝트가 일시정지 상태이거나 오류일 수 있음."
             exit 1
+          fi
+
+      - name: Keep repo active (매월 1·15일 빈 커밋)
+        if: github.event_name == 'schedule'
+        run: |
+          DAY=$(date -u +%d)
+          if [ "$DAY" = "01" ] || [ "$DAY" = "15" ]; then
+            git config user.name "keepalive-bot"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git commit --allow-empty -m "chore: keepalive 저장소 활동 유지 [skip ci]"
+            git push
+            echo "🔁 활동 유지 커밋 완료"
+          else
+            echo "오늘은 커밋 불필요 (핑만 수행)"
           fi
