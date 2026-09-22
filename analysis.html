@@ -190,6 +190,7 @@
     const $ = (id) => document.getElementById(id);
     $("fOffice").innerHTML = `<option value="">전국 전체</option>` + OFFICE_LIST.map((o) => `<option>${o}</option>`).join("");
     const setStatus = (m, err) => { const s = $("status"); s.textContent = m || ""; s.className = err ? "err" : ""; };
+    const errText = (e) => { const m = (e && e.message) || String(e || ""); return /failed to fetch|networkerror|load failed|fetch/i.test(m) ? "서버 연결 실패 — 서버가 잠자고 있거나 네트워크 문제일 수 있어요. 잠시 후 다시 시도하거나 관리자에게 문의하세요." : m; };
     const COLORS = ["--c1", "--c2", "--c3", "--c4", "--c5", "--c6"];
 
     // 집계
@@ -362,7 +363,7 @@
         renderRepeat(repeatFaults(rows));
         renderRisk(siteRisk(rows));
       } catch (e) {
-        setStatus("불러오기 오류: " + e.message + " (fault_cases 테이블 확인)", true);
+        setStatus("불러오기 오류: " + errText(e), true);
       }
     }
 

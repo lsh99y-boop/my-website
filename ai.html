@@ -168,6 +168,7 @@
     const $ = (id) => document.getElementById(id);
     const esc = (s) => (s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;");
     const setStatus = (m, err) => { const s = $("status"); s.textContent = m || ""; s.className = err ? "err" : ""; };
+    const errText = (e) => { const m = (e && e.message) || String(e || ""); return /failed to fetch|networkerror|load failed|fetch/i.test(m) ? "서버 연결 실패 — 서버가 잠자고 있거나 네트워크 문제일 수 있어요. 잠시 후 다시 시도하거나 관리자에게 문의하세요." : m; };
 
     const SUGGEST = [
       "최근 정비사례를 알려줘",
@@ -287,7 +288,7 @@
         setStatus(`정비사례 ${faults.length}건 · 일지 ${logs.length}건` + (bits.length ? ` (인식: ${bits.join(" / ")})` : ""));
         if (engine) aiSummarize(question, faults, logs);
       } catch (e) {
-        setStatus("검색 오류: " + e.message + " (테이블 확인)", true);
+        setStatus("검색 오류: " + errText(e), true);
       } finally { $("go").disabled = false; }
     }
     $("go").addEventListener("click", doSearch);

@@ -563,6 +563,7 @@
 
     const status = document.getElementById("status");
     function setStatus(msg, cls) { status.textContent = msg; status.className = "saved " + (cls || ""); }
+    const errText = (e) => { const m = (e && e.message) || String(e || ""); return /failed to fetch|networkerror|load failed|fetch/i.test(m) ? "서버 연결 실패 — 서버가 잠자고 있거나 네트워크 문제일 수 있어요. 잠시 후 다시 시도하거나 관리자에게 문의하세요." : m; };
 
     // 날짜 → 요일 자동
     const dateEl = document.getElementById("date");
@@ -649,7 +650,7 @@
         dateWarn.style.display = dateEl.value === todayStr() ? "none" : "block";
         maybeAutoWeather(); // 오늘·빈칸이면 지역 날씨 자동 채움(수정 가능)
       } catch (err) {
-        setStatus("불러오기 오류: " + err.message + " (테이블 생성됐나요?)", "err");
+        setStatus("불러오기 오류: " + errText(err), "err");
       } finally {
         suppressSave = false;
       }
@@ -670,7 +671,7 @@
           const t = new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" });
           setStatus(`💾 자동 저장됨 (${t})`, "ok");
         } catch (err) {
-          setStatus("자동저장 실패: " + err.message + " (테이블 생성 필요?)", "err");
+          setStatus("자동저장 실패: " + errText(err), "err");
         }
       }, 1500);
     }
@@ -778,7 +779,7 @@
         setStatus(`✅ 저장 완료 (${dateEl.value})`, "ok");
       } catch (err) {
         console.error(err);
-        setStatus("❌ 저장 오류: " + err.message + " (테이블 생성 필요할 수 있음)", "err");
+        setStatus("❌ 저장 오류: " + errText(err), "err");
       } finally {
         e.currentTarget.disabled = false;
       }

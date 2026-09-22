@@ -296,6 +296,7 @@
     const esc = (s) => (s || "").replace(/</g, "&lt;");
     const setStatus = (m, c) => { $("status").textContent = m; $("status").className = c || ""; };
     const setFStatus = (m, c) => { $("fstatus").textContent = m; $("fstatus").className = c || ""; };
+    const errText = (e) => { const m = (e && e.message) || String(e || ""); return /failed to fetch|networkerror|load failed|fetch/i.test(m) ? "서버 연결 실패 — 서버가 잠자고 있거나 네트워크 문제일 수 있어요. 잠시 후 다시 시도하거나 관리자에게 문의하세요." : m; };
 
     function fillOffices(sel, withAll) { sel.innerHTML = (withAll ? `<option value="">전체</option>` : "") + OFFICE_LIST.map((o) => `<option>${o}</option>`).join(""); }
     function fillSites(sel, office, withAll) { const s = OFFICES[office] || []; sel.innerHTML = (withAll ? `<option value="">전체</option>` : `<option value="">(송신소)</option>`) + s.map((x) => `<option>${x}</option>`).join(""); }
@@ -320,7 +321,7 @@
       try {
         const rows = await searchCases({ q: $("q").value, office: $("fOffice").value, site: $("fSite").value, equip_type: $("fEquip").value });
         renderList(rows);
-      } catch (e) { $("results").innerHTML = `<div class="empty err">검색 오류: ${esc(e.message)}<br>(fault_cases 테이블 만드셨나요?)</div>`; }
+      } catch (e) { $("results").innerHTML = `<div class="empty err">검색 오류: ${esc(errText(e))}</div>`; }
     }
     function renderList(rows) {
       $("count").textContent = `(${rows.length}건)`;
@@ -479,7 +480,7 @@
         if (currentId) { await updateCase(currentId, c); setFStatus(`✅ #${currentId} 수정 완료`, "ok"); }
         else { const s = await saveCase(c); currentId = s.id; $("formTitle").textContent = "✏️ 사례 수정"; $("saveBtn").textContent = "💾 수정 저장"; $("delBtn").style.display = ""; setFStatus(`✅ 등록 완료 (#${s.id})`, "ok"); }
         doSearch();
-      } catch (err) { setFStatus("저장 오류: " + err.message + " (fault_cases 테이블 필요)", "err"); }
+      } catch (err) { setFStatus("저장 오류: " + errText(err), "err"); }
       finally { e.currentTarget.disabled = false; }
     });
     $("delBtn").addEventListener("click", async () => {
