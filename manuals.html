@@ -104,6 +104,16 @@
     .drop .main { font-weight:700; margin-top:6px; }
     .drop .main b { color:var(--accent); }
     .drop .sub { font-size:.8rem; color:var(--muted); margin-top:3px; }
+
+    /* 페이지 OCR 뷰어 */
+    .pager { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:16px; border-top:1px solid var(--line); padding-top:14px; }
+    .pager .mini { padding:7px 9px; width:auto; }
+    .pager .pgnav { display:flex; align-items:center; gap:6px; margin-left:auto; font-size:.85rem; color:var(--muted); }
+    .pager .pgnav input { padding:6px 4px; }
+    .pgGrid { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:10px; }
+    .pgCanvasBox { border:1px solid var(--line); border-radius:8px; background:#fff; overflow:auto; max-height:72vh; }
+    #pgCanvas { width:100%; height:auto; display:block; }
+    @media (max-width:640px){ .pgGrid { grid-template-columns:1fr; } .pager .pgnav { margin-left:0; } }
   </style>
 </head>
 <body>
@@ -138,7 +148,7 @@
     <section id="viewList" style="margin-top:14px">
       <div class="panel">
         <div class="filters">
-          <div class="f" style="flex:3"><label>검색 (제목 · 모델 · 장비)</label><input id="fq" placeholder="예: 송신기, DMT, 엑사이터" /></div>
+          <div class="f" style="flex:3"><label>검색 (제목 · 모델 · 제조사 · PDF 원문)</label><input id="fq" placeholder="예: cooling fan, 엑사이터, VSWR, 교체주기" /></div>
           <button class="btn sm" id="fGo">검색</button>
         </div>
       </div>
@@ -218,29 +228,45 @@
     }
     document.querySelectorAll("#seg button").forEach((b) => b.addEventListener("click", () => { const v = b.dataset.v; show(v); if (v === "list") loadList(); if (v === "add") resetAdd(); }));
 
-    // ===== 목록 =====
+    // ===== 목록·검색 =====
     async function loadList() {
-      $("listStatus").textContent = "불러오는 중…"; $("listStatus").className = "status";
+      const q = $("fq").value.trim();
+      $("listStatus").textContent = q ? "원문까지 검색 중…" : "불러오는 중…"; $("listStatus").className = "status";
       try {
-        const rows = await listManuals({ q: $("fq").value });
-        renderList(rows);
-        $("listStatus").textContent = rows.length ? `${rows.length}건` : "";
+        const rows = await listManuals({ q });
+        renderList(rows, q);
+        $("listStatus").textContent = rows.length ? `${rows.length}건${q ? " · 제목·모델·원문(PDF) 검색" : ""}` : (q ? "검색 결과가 없어요." : "");
       } catch (e) {
         $("listStatus").textContent = "오류: " + errText(e); $("listStatus").className = "status err";
       }
     }
-    function renderList(rows) {
+    // 원문에서 검색어 주변 스니펫(앞뒤 문맥) 추출
+    function bodySnippet(text, q) {
+      if (!text || !q) return "";
+      const t = text.replace(/\s+/g, " ");
+      const i = t.toLowerCase().indexOf(q.toLowerCase());
+      if (i < 0) return "";
+      const s = Math.max(0, i - 50), e = Math.min(t.length, i + q.length + 90);
+      const mid = esc(t.slice(i, i + q.length));
+      return (s > 0 ? "… " : "") + esc(t.slice(s, i)) + `<mark style="background:var(--accent-weak);color:var(--accent);border-radius:3px;padding:0 2px">${mid}</mark>` + esc(t.slice(i + q.length, e)) + (e < t.length ? " …" : "");
+    }
+    function renderList(rows, q) {
       const box = $("listBox");
-      if (!rows.length) { box.innerHTML = `<div class="empty">등록된 매뉴얼이 없어요. 상단 ‘➕ 등록’으로 추가하세요.</div>`; return; }
-      box.innerHTML = rows.map((r) => `
+      if (!rows.length) { box.innerHTML = `<div class="empty">${q ? "검색 결과가 없어요. 다른 단어로 찾아보세요." : "등록된 매뉴얼이 없어요. 상단 ‘➕ 등록’으로 추가하세요."}</div>`; return; }
+      box.innerHTML = rows.map((r) => {
+        const snip = q ? bodySnippet(r.doc_text, q) : "";
+        return `
         <div class="card" data-id="${r.id}">
           <div class="tags">
             ${r.equip_type ? `<span class="tag">${esc(r.equip_type)}</span>` : ""}
+            ${snip ? `<span class="tag" style="background:color-mix(in srgb, var(--accent) 14%, var(--surface));color:var(--accent)">본문 일치</span>` : ""}
             <span class="tag ${r.translated_at ? "ko" : "en"}" style="margin-left:auto">${r.translated_at ? "번역본 있음" : "원문만"}</span>
           </div>
           <div class="ttl">${esc(r.title)}</div>
           <div class="meta">${[r.maker, r.model].filter(Boolean).map(esc).join(" · ")}</div>
-        </div>`).join("");
+          ${snip ? `<div class="meta" style="margin-top:6px;line-height:1.5">${snip}</div>` : ""}
+        </div>`;
+      }).join("");
       box.querySelectorAll(".card").forEach((c) => c.addEventListener("click", () => openDetail(c.dataset.id)));
     }
     $("fGo").addEventListener("click", loadList);
@@ -328,13 +354,17 @@
         current = await getManual(id);
         if (!current) { $("detailBox").innerHTML = `<div class="empty">문서를 찾을 수 없어요.</div>`; return; }
         paneMode = current.translated_text ? "ko" : "en";
-        renderDetail();
+        pdfDoc = null; curPage = 1;
+        $("detailBox").innerHTML = `<div id="detailTop"></div><div id="pageWrap"></div>`;
+        renderTop();
+        if (current.doc_path) initPageViewer(docUrl(current.doc_path));
       } catch (e) {
         $("detailBox").innerHTML = `<div class="empty">오류: ${esc(errText(e))}</div>`;
       }
     }
 
-    function renderDetail() {
+    // 상단(제목·액션·원문/번역 텍스트) — 탭 전환·번역 후 이 부분만 다시 그림(페이지 뷰어는 유지)
+    function renderTop() {
       const r = current;
       const hasKo = !!(r.translated_text && r.translated_text.trim());
       const hasEn = !!(r.doc_text && r.doc_text.trim());
@@ -343,10 +373,10 @@
         ? (hasKo ? esc(r.translated_text) : null)
         : (hasEn ? esc(r.doc_text) : null);
       const pendingMsg = paneMode === "ko"
-        ? (hasEn ? "아직 번역하지 않았어요. 아래 ‘번역하기’를 누르세요." : "원문 텍스트가 없어 번역할 수 없어요(스캔본). 원본 PDF를 열어 확인하세요.")
-        : "원문 텍스트가 없어요(스캔본). 원본 PDF를 열어 확인하세요.";
+        ? (hasEn ? "아직 번역하지 않았어요. 아래 ‘번역하기’를 누르세요." : "원문 텍스트가 없어 번역할 수 없어요(스캔본). 아래 ‘📄 페이지 번역’으로 페이지별 번역하세요.")
+        : "원문 텍스트가 없어요(스캔본). 아래 ‘📄 페이지 번역’으로 페이지별 번역하세요.";
 
-      $("detailBox").innerHTML = `
+      $("detailTop").innerHTML = `
         <div class="dv-head">
           <div style="flex:1">
             <div class="ttl">${esc(r.title)}</div>
@@ -355,7 +385,7 @@
         </div>
         <div class="dv-actions">
           ${pdf}
-          ${hasEn && !hasKo ? `<button class="btn sm" id="trBtn">🌐 한국어로 번역하기</button>` : ""}
+          ${hasEn && !hasKo ? `<button class="btn sm" id="trBtn">🌐 추출 텍스트 번역</button>` : ""}
           ${hasKo ? `<button class="btn ghost sm" id="retrBtn">🔄 다시 번역</button>` : ""}
           <button class="btn danger sm" id="delBtn" style="margin-left:auto">🗑 삭제</button>
         </div>
@@ -372,14 +402,104 @@
           </div>
           <div class="vbody ${body ? "" : "pending"}" id="vbody">${body || pendingMsg}</div>
         </div>
-        <div class="hint">※ 번역은 무료 자동번역(구글)이라 기술용어는 오역이 있을 수 있어요. 애매하면 원문·원본 PDF로 확인하세요.</div>
+        <div class="hint">※ 번역은 무료 자동번역이라 기술용어는 오역이 있을 수 있어요. 애매하면 원문·원본 PDF로 확인하세요. · 스캔(이미지) 매뉴얼은 아래 ‘📄 페이지 번역’을 쓰세요.</div>
       `;
 
-      $("tabKo").addEventListener("click", () => { paneMode = "ko"; renderDetail(); });
-      $("tabEn").addEventListener("click", () => { paneMode = "en"; renderDetail(); });
+      $("tabKo").addEventListener("click", () => { paneMode = "ko"; renderTop(); });
+      $("tabEn").addEventListener("click", () => { paneMode = "en"; renderTop(); });
       $("delBtn").addEventListener("click", doDelete);
       const tr = $("trBtn") || $("retrBtn");
       if (tr) tr.addEventListener("click", doTranslate);
+    }
+
+    // ===== 페이지 OCR 뷰어 (스캔 매뉴얼용) =====
+    let pdfDoc = null, curPage = 1;
+    async function initPageViewer(url) {
+      const wrap = $("pageWrap");
+      wrap.innerHTML = `
+        <div class="pager">
+          <b>📄 페이지 번역 <span style="font-weight:400;color:var(--muted)">· 스캔(이미지) 매뉴얼용</span></b>
+          <select id="ocrLang" class="mini"><option value="eng">영어</option><option value="jpn">일본어</option><option value="eng+jpn">영어+일본어</option></select>
+          <span class="pgnav">
+            <button class="btn ghost sm" id="pgPrev">◀</button>
+            <input id="pgNum" type="number" min="1" value="1" style="width:58px;text-align:center" /> / <span id="pgTot">…</span>
+            <button class="btn ghost sm" id="pgNext">▶</button>
+            <button class="btn sm" id="ocrBtn">🔎 이 페이지 번역</button>
+          </span>
+        </div>
+        <div class="prog" id="ocrProg"><i id="ocrFill"></i></div>
+        <div class="status" id="ocrStatus"></div>
+        <div class="pgGrid">
+          <div class="pgCanvasBox"><canvas id="pgCanvas"></canvas></div>
+          <div class="viewer"><div class="vbody" id="ocrOut" style="min-height:140px;color:var(--muted)">페이지를 넘기며 <b>‘🔎 이 페이지 번역’</b>을 누르면, 그 페이지의 글자를 인식해 번역해요.<br>(첫 실행은 인식엔진 다운로드로 조금 더 걸려요.)</div></div>
+        </div>
+      `;
+      $("pgPrev").onclick = () => gotoPage(curPage - 1);
+      $("pgNext").onclick = () => gotoPage(curPage + 1);
+      $("pgNum").onchange = () => gotoPage(parseInt($("pgNum").value, 10) || 1);
+      $("ocrBtn").onclick = ocrCurrentPage;
+      $("ocrStatus").textContent = "PDF 불러오는 중…";
+      try {
+        const pdfjsLib = await import("https://esm.sh/pdfjs-dist@4.7.76/build/pdf.min.mjs");
+        pdfjsLib.GlobalWorkerOptions.workerSrc = "https://esm.sh/pdfjs-dist@4.7.76/build/pdf.worker.min.mjs";
+        pdfDoc = await pdfjsLib.getDocument(url).promise;
+        $("pgTot").textContent = pdfDoc.numPages;
+        $("pgNum").max = pdfDoc.numPages;
+        curPage = 1;
+        await renderPage(1);
+        $("ocrStatus").textContent = "";
+      } catch (e) {
+        $("ocrStatus").textContent = "PDF 로드 실패: " + errText(e); $("ocrStatus").className = "status err";
+      }
+    }
+    async function gotoPage(n) {
+      if (!pdfDoc) return;
+      n = Math.max(1, Math.min(pdfDoc.numPages, n));
+      curPage = n; $("pgNum").value = n;
+      await renderPage(n);
+    }
+    async function renderPage(n) {
+      const page = await pdfDoc.getPage(n);
+      const vp = page.getViewport({ scale: 2.0 });
+      const cv = $("pgCanvas");
+      cv.width = Math.floor(vp.width); cv.height = Math.floor(vp.height);
+      const ctx = cv.getContext("2d");
+      ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, cv.width, cv.height);
+      await page.render({ canvasContext: ctx, viewport: vp }).promise;
+    }
+    async function ensureTesseract() {
+      if (window.Tesseract) return window.Tesseract;
+      await new Promise((res, rej) => {
+        const s = document.createElement("script");
+        s.src = "https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js";
+        s.onload = res; s.onerror = () => rej(new Error("OCR 라이브러리 로드 실패"));
+        document.head.appendChild(s);
+      });
+      return window.Tesseract;
+    }
+    async function ocrCurrentPage() {
+      if (!pdfDoc) return;
+      const lang = $("ocrLang").value;
+      $("ocrBtn").disabled = true;
+      $("ocrProg").style.display = "block"; $("ocrFill").style.width = "3%";
+      $("ocrStatus").textContent = "글자 인식 준비 중… (첫 실행은 엔진 다운로드로 더 걸려요)"; $("ocrStatus").className = "status";
+      try {
+        const T = await ensureTesseract();
+        const { data } = await T.recognize($("pgCanvas"), lang, {
+          logger: (m) => { if (m.status === "recognizing text" && m.progress != null) { $("ocrFill").style.width = Math.round(m.progress * 100) + "%"; $("ocrStatus").textContent = "글자 인식 중… " + Math.round(m.progress * 100) + "%"; } },
+        });
+        const text = (data.text || "").trim();
+        if (!text) { $("ocrOut").innerHTML = `<span style="color:var(--amber)">이 페이지에서 인식된 글자가 없어요 (그림·회로도 위주 페이지일 수 있어요).</span>`; $("ocrStatus").textContent = ""; return; }
+        $("ocrStatus").textContent = "번역 중…"; $("ocrFill").style.width = "100%";
+        const translated = await translateText(text);
+        $("ocrOut").innerHTML = `<div style="font-weight:800;color:var(--accent);margin-bottom:6px">📄 ${curPage}페이지 번역</div><div style="white-space:pre-wrap">${esc(translated)}</div><details style="margin-top:12px"><summary style="cursor:pointer;color:var(--muted);font-size:.82rem">인식된 원문 보기</summary><div style="white-space:pre-wrap;color:var(--muted);font-size:.85rem;margin-top:6px">${esc(text)}</div></details>`;
+        $("ocrStatus").textContent = "✅ 완료";
+      } catch (e) {
+        $("ocrStatus").textContent = "실패: " + errText(e); $("ocrStatus").className = "status err";
+      } finally {
+        $("ocrBtn").disabled = false;
+        setTimeout(() => { const p = $("ocrProg"); if (p) p.style.display = "none"; }, 800);
+      }
     }
 
     async function doTranslate() {
@@ -395,7 +515,7 @@
         const updated = await updateManual(r.id, { translated_text: translated, translated_at: new Date().toISOString() });
         current = updated || { ...r, translated_text: translated, translated_at: new Date().toISOString() };
         paneMode = "ko";
-        renderDetail();
+        renderTop();
         $("trStatus") && ($("trStatus").textContent = "✅ 번역 완료 (저장됨)");
       } catch (e) {
         $("trStatus").textContent = "번역 실패: " + errText(e); $("trStatus").className = "status err";

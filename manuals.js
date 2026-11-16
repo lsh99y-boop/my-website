@@ -21,17 +21,20 @@ export async function getManual(id) {
   if (error) throw error;
   return data;
 }
-// 목록(가벼운 컬럼만) — 필터: office/site/model + q(제목·모델·장비)
-export async function listManuals({ office, site, model, q } = {}) {
-  let query = supabase
-    .from("manuals")
-    .select("id,equip_type,maker,model,title,doc_path,translated_at,created_at")
-    .order("created_at", { ascending: false })
-    .limit(300);
+// 목록/검색 — q 가 있으면 제목·모델·제조사·장비 + PDF 원문(doc_text)까지 검색
+export async function listManuals({ model, q } = {}) {
+  const searching = !!(q && q.trim());
+  // 검색 시에는 스니펫 표시를 위해 원문(doc_text)도 가져온다
+  const cols = searching
+    ? "id,equip_type,maker,model,title,doc_path,doc_text,translated_at,created_at"
+    : "id,equip_type,maker,model,title,doc_path,translated_at,created_at";
+  let query = supabase.from("manuals").select(cols).order("created_at", { ascending: false }).limit(300);
   if (model) query = query.ilike("model", `%${model}%`);
-  if (q && q.trim()) {
+  if (searching) {
     const kw = q.trim().replace(/[%,]/g, " ");
-    query = query.or(`title.ilike.%${kw}%,model.ilike.%${kw}%,maker.ilike.%${kw}%,equip_type.ilike.%${kw}%`);
+    query = query.or(
+      `title.ilike.%${kw}%,model.ilike.%${kw}%,maker.ilike.%${kw}%,equip_type.ilike.%${kw}%,doc_text.ilike.%${kw}%`
+    );
   }
   const { data, error } = await query;
   if (error) throw error;
