@@ -407,6 +407,7 @@
           </span>
         </div>
         <div class="status" id="pdfStatus"></div>
+        <div id="pdfOutline" style="margin:8px 0"></div>
         <div id="matchList" style="margin:6px 0"></div>
         <div class="pgCanvasBox" style="margin-top:4px"><canvas id="pgCanvas"></canvas></div>
         <div class="hint">※ PDF 글자(텍스트 레이어) 기준으로 찾아요. 스캔 이미지 페이지(도면 등)는 글자가 없어 검색이 안 되고, 그땐 글자가 있는 페이지(목차 등)로 안내돼요.</div>
@@ -433,9 +434,10 @@
         $("pgTot").textContent = pdfDoc.numPages;
         $("pgNum").max = pdfDoc.numPages;
         pdfPages = String(current.doc_text || "").split("\n");   // 저장된 원문(페이지당 한 줄) 재사용
-        await renderPdfPage(1);
         $("pdfStatus").textContent = "";
-        if (prefill && prefill.trim()) searchPdf(prefill);
+        renderOutline();                 // 북마크는 페이지 렌더와 무관하게 바로 표시
+        if (prefill && prefill.trim()) searchPdf(prefill);   // prefill이 있으면 매치 페이지를 렌더
+        else renderPdfPage(1);
       } catch (e) {
         $("pdfStatus").textContent = "PDF 로드 실패: " + errText(e); $("pdfStatus").className = "status err";
       }
@@ -481,6 +483,32 @@
           boxEl.scrollTop = Math.max(0, targetY - boxEl.clientHeight / 2);
         }
       } catch (e) { /* 하이라이트 실패는 무시(페이지는 정상 표시) */ }
+    }
+
+    // PDF 북마크(아웃라인) → 섹션 바로가기 버튼. 클릭 시 그 섹션(도면) 페이지로 이동
+    async function renderOutline() {
+      const host = $("pdfOutline"); if (!host) return;
+      host.innerHTML = "";
+      let outline = null;
+      try { outline = await pdfDoc.getOutline(); } catch (e) {}
+      if (!outline || !outline.length) return;
+      const rows = [];
+      async function walk(items, depth) {
+        for (const it of items) {
+          let page = null;
+          try { const dest = typeof it.dest === "string" ? await pdfDoc.getDestination(it.dest) : it.dest; if (dest && dest[0]) page = (await pdfDoc.getPageIndex(dest[0])) + 1; } catch (e) {}
+          rows.push({ title: it.title || "(제목 없음)", page, depth });
+          if (it.items && it.items.length) await walk(it.items, depth + 1);
+        }
+      }
+      await walk(outline, 0);
+      const usable = rows.filter((r) => r.page);
+      if (!usable.length) return;
+      host.innerHTML = `<details open><summary style="cursor:pointer;font-weight:700;font-size:.88rem;padding:4px 0">📑 섹션 바로가기 (PDF 북마크) · 클릭하면 그 도면 페이지로 이동</summary>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">` +
+        usable.map((r) => `<button class="btn ghost sm olrow" data-p="${r.page}" style="margin-left:${r.depth * 12}px"><span style="font-weight:600">${esc(r.title)}</span> <span style="color:var(--muted)">p.${r.page}</span></button>`).join("") +
+        `</div></details>`;
+      host.querySelectorAll(".olrow").forEach((b) => b.addEventListener("click", () => { searchKw = ""; renderPdfPage(parseInt(b.dataset.p, 10)); }));
     }
 
     // 키워드 → 그 글자가 있는 PDF 페이지들을 찾아 목록으로, 클릭 시 해당 페이지 렌더
