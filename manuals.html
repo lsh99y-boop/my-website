@@ -240,15 +240,20 @@
         $("listStatus").textContent = "오류: " + errText(e); $("listStatus").className = "status err";
       }
     }
-    // 원문에서 검색어 주변 스니펫(앞뒤 문맥) 추출
+    const reEsc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const MARK = 'background:var(--accent-weak);color:var(--accent);border-radius:3px;padding:0 2px';
+    // 원문에서 (여러 키워드 중) 가장 먼저 나오는 곳의 앞뒤 문맥 스니펫 + 하이라이트
     function bodySnippet(text, q) {
       if (!text || !q) return "";
-      const t = text.replace(/\s+/g, " ");
-      const i = t.toLowerCase().indexOf(q.toLowerCase());
-      if (i < 0) return "";
-      const s = Math.max(0, i - 50), e = Math.min(t.length, i + q.length + 90);
-      const mid = esc(t.slice(i, i + q.length));
-      return (s > 0 ? "… " : "") + esc(t.slice(s, i)) + `<mark style="background:var(--accent-weak);color:var(--accent);border-radius:3px;padding:0 2px">${mid}</mark>` + esc(t.slice(i + q.length, e)) + (e < t.length ? " …" : "");
+      const terms = q.trim().split(/\s+/).filter(Boolean);
+      const t = text.replace(/\s+/g, " "), low = t.toLowerCase();
+      let pos = -1, len = 0;
+      for (const kw of terms) { const i = low.indexOf(kw.toLowerCase()); if (i >= 0 && (pos < 0 || i < pos)) { pos = i; len = kw.length; } }
+      if (pos < 0) return "";
+      const s = Math.max(0, pos - 50), e = Math.min(t.length, pos + len + 100);
+      let seg = esc(t.slice(s, e));
+      for (const kw of [...terms].sort((a, b) => b.length - a.length)) if (kw) seg = seg.replace(new RegExp("(" + reEsc(kw) + ")", "ig"), `<mark style="${MARK}">$1</mark>`);
+      return (s > 0 ? "… " : "") + seg + (e < t.length ? " …" : "");
     }
     function renderList(rows, q) {
       const box = $("listBox");
@@ -270,6 +275,9 @@
     }
     $("fGo").addEventListener("click", loadList);
     $("fq").addEventListener("keydown", (e) => { if (e.key === "Enter") loadList(); });
+    // 실시간 검색(타이핑하는 대로, 350ms 디바운스)
+    let searchTimer;
+    $("fq").addEventListener("input", () => { clearTimeout(searchTimer); searchTimer = setTimeout(loadList, 350); });
 
     // ===== 등록 =====
     let docInfo = null; // {path, text, size}
@@ -351,13 +359,14 @@
       try {
         current = await getManual(id);
         if (!current) { $("detailBox").innerHTML = `<div class="empty">문서를 찾을 수 없어요.</div>`; return; }
-        renderDetail();
+        renderDetail(($("fq").value || "").trim());   // 목록에서 검색한 단어가 있으면 문서 내 찾기에 미리 채움
       } catch (e) {
         $("detailBox").innerHTML = `<div class="empty">오류: ${esc(errText(e))}</div>`;
       }
     }
 
-    function renderDetail() {
+    let findIdx = -1, findCount = 0;
+    function renderDetail(prefill) {
       const r = current;
       const hasText = !!(r.doc_text && r.doc_text.trim());
       const pdf = r.doc_path ? `<a class="filelink" href="${docUrl(r.doc_path)}" target="_blank" rel="noopener">📎 원본 PDF 열기</a>` : "";
@@ -374,11 +383,54 @@
         </div>
         ${hasText ? `
         <div class="viewer" style="margin-top:14px">
-          <div class="vhead"><b style="font-size:.9rem">📄 PDF에서 추출한 원문 텍스트</b><span style="margin-left:auto;font-size:.78rem;color:var(--muted)">검색에 사용돼요</span></div>
-          <div class="vbody" id="vbody">${esc(r.doc_text)}</div>
+          <div class="vhead">
+            <b style="font-size:.9rem;white-space:nowrap">🔎 매뉴얼 내용에서 찾기</b>
+            <input id="findq" placeholder="키워드 입력 (Ctrl+F 처럼)" style="flex:1;min-width:120px;padding:7px 11px" value="${esc(prefill || "")}" />
+            <span id="findCount" style="font-size:.8rem;color:var(--muted);white-space:nowrap"></span>
+            <button class="btn ghost sm" id="findPrev" title="이전">▲</button>
+            <button class="btn ghost sm" id="findNext" title="다음">▼</button>
+          </div>
+          <div class="vbody" id="vbody"></div>
         </div>` : `<div class="hint" style="margin-top:14px">이 매뉴얼은 추출된 텍스트가 없어요(스캔 이미지 PDF). 원본 PDF를 열어 확인하세요.</div>`}
       `;
       $("delBtn").addEventListener("click", doDelete);
+      if (hasText) {
+        const fq = $("findq");
+        const run = () => applyFind(fq.value);
+        fq.addEventListener("input", run);
+        fq.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); e.shiftKey ? gotoMatch(findIdx - 1) : gotoMatch(findIdx + 1); } });
+        $("findPrev").addEventListener("click", () => gotoMatch(findIdx - 1));
+        $("findNext").addEventListener("click", () => gotoMatch(findIdx + 1));
+        applyFind(fq.value);
+        if (prefill) fq.focus();
+      }
+    }
+
+    // 문서 내 찾기 — 모든 일치 하이라이트 + 개수/현재 위치 표시
+    function applyFind(q) {
+      const raw = (current && current.doc_text) || "";
+      const vb = $("vbody"); if (!vb) return;
+      q = (q || "").trim();
+      if (!q) { vb.innerHTML = esc(raw); findCount = 0; findIdx = -1; $("findCount").textContent = ""; return; }
+      const low = raw.toLowerCase(), kw = q.toLowerCase();
+      let html = "", last = 0, i, n = 0;
+      while ((i = low.indexOf(kw, last)) >= 0) {
+        html += esc(raw.slice(last, i)) + `<mark class="fm" data-i="${n}" style="${MARK}">` + esc(raw.slice(i, i + q.length)) + `</mark>`;
+        last = i + q.length; n++;
+      }
+      html += esc(raw.slice(last));
+      vb.innerHTML = html;
+      findCount = n;
+      gotoMatch(n ? 0 : -1);
+    }
+    function gotoMatch(i) {
+      if (!findCount) { $("findCount").textContent = "결과 없음"; findIdx = -1; return; }
+      findIdx = ((i % findCount) + findCount) % findCount;       // 순환
+      $("findCount").textContent = `${findIdx + 1} / ${findCount}`;
+      const marks = document.querySelectorAll("#vbody .fm");
+      marks.forEach((m, k) => m.style.background = k === findIdx ? "var(--amber)" : "var(--accent-weak)");
+      const cur = marks[findIdx];
+      if (cur) cur.scrollIntoView({ block: "center", behavior: "smooth" });
     }
 
     async function doDelete() {
