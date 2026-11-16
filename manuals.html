@@ -1,0 +1,424 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>장비 매뉴얼</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+  <script>try{var t=localStorage.getItem("ilji_theme");if(t)document.documentElement.setAttribute("data-theme",t);}catch(e){}</script>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <meta name="theme-color" content="#2563eb" />
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+  <link rel="icon" href="icons/favicon-32.png" sizes="32x32" />
+  <script>if("serviceWorker" in navigator){window.addEventListener("load",function(){navigator.serviceWorker.register("sw.js").catch(function(){});});}</script>
+  <style>
+    :root {
+      --bg:#f4f5f8; --surface:#ffffff; --surface-2:#f5f6f9; --line:#e7e9ef; --line-strong:#d8dbe3;
+      --ink:#1b1f2a; --muted:#6b7280;
+      --accent:#2563eb; --accent-ink:#ffffff; --accent-weak:#eef0fe; --accent-border:#dadcfb;
+      --green:#16a34a; --amber:#c77905; --danger:#dc2626;
+      --shadow-sm:0 1px 2px rgba(16,24,40,.05); --shadow:0 2px 4px rgba(16,24,40,.04), 0 10px 24px rgba(16,24,40,.07);
+      --radius:14px;
+    }
+    @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+      --bg:#0e131c; --surface:#161c28; --surface-2:#1e2532; --line:#2a3342; --line-strong:#3a4455;
+      --ink:#e6e9f0; --muted:#96a1b4;
+      --accent:#60a5fa; --accent-ink:#0e131c; --accent-weak:#232b45; --accent-border:#3a4468;
+      --green:#4ade80; --amber:#fbbf24; --danger:#f87171;
+      --shadow-sm:0 1px 2px rgba(0,0,0,.4); --shadow:0 2px 6px rgba(0,0,0,.35), 0 12px 30px rgba(0,0,0,.42);
+    } }
+    :root[data-theme="dark"] {
+      --bg:#0e131c; --surface:#161c28; --surface-2:#1e2532; --line:#2a3342; --line-strong:#3a4455;
+      --ink:#e6e9f0; --muted:#96a1b4;
+      --accent:#60a5fa; --accent-ink:#0e131c; --accent-weak:#232b45; --accent-border:#3a4468;
+      --green:#4ade80; --amber:#fbbf24; --danger:#f87171;
+      --shadow-sm:0 1px 2px rgba(0,0,0,.4); --shadow:0 2px 6px rgba(0,0,0,.35), 0 12px 30px rgba(0,0,0,.42);
+    }
+    * { box-sizing:border-box; }
+    body { font-family:"Pretendard Variable",Pretendard,system-ui,"Malgun Gothic",sans-serif; margin:0; background:var(--bg); color:var(--ink); -webkit-font-smoothing:antialiased; }
+    .topbar { position:sticky; top:0; z-index:50; background:var(--surface); border-bottom:1px solid var(--line); box-shadow:var(--shadow-sm); }
+    .topbar-inner { max-width:920px; margin:0 auto; padding:11px 18px; display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+    .brand { font-weight:800; font-size:1.05rem; letter-spacing:-.01em; }
+    .tb-actions { margin-left:auto; display:flex; gap:8px; align-items:center; }
+    .tb-btn { color:var(--accent); background:var(--surface); text-decoration:none; font-weight:600; font-size:.84rem; white-space:nowrap; border:1px solid var(--accent-border); border-radius:9px; padding:8px 12px; cursor:pointer; }
+    .tb-btn:hover { background:var(--accent-weak); }
+    .icon-btn { padding:8px 10px; font-size:1rem; line-height:1; }
+    main { max-width:920px; margin:18px auto; padding:0 16px 80px; }
+
+    .panel { background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:16px; box-shadow:var(--shadow-sm); margin-bottom:16px; }
+    .row { display:flex; gap:10px; flex-wrap:wrap; }
+    .row > * { flex:1; min-width:140px; }
+    label { display:block; font-size:.78rem; font-weight:700; color:var(--muted); margin:0 0 5px; }
+    input, select, textarea { width:100%; font:inherit; color:var(--ink); background:var(--surface); border:1px solid var(--line-strong); border-radius:10px; padding:11px 13px; }
+    input:focus, select:focus, textarea:focus { outline:2px solid var(--accent); border-color:var(--accent); }
+    .field { margin-bottom:12px; }
+    .btn { background:var(--accent); color:var(--accent-ink); border:0; border-radius:10px; font-weight:700; padding:11px 18px; cursor:pointer; white-space:nowrap; }
+    .btn:disabled { opacity:.5; cursor:default; }
+    .btn.ghost { background:var(--surface); color:var(--accent); border:1px solid var(--accent-border); }
+    .btn.ghost:hover { background:var(--accent-weak); }
+    .btn.danger { background:var(--surface); color:var(--danger); border:1px solid color-mix(in srgb, var(--danger) 40%, var(--surface)); }
+    .btn.sm { padding:7px 12px; font-size:.82rem; }
+
+    .seg { display:flex; gap:6px; background:var(--surface-2); border:1px solid var(--line); border-radius:11px; padding:4px; width:max-content; }
+    .seg button { background:transparent; border:0; border-radius:8px; padding:8px 16px; font-weight:700; color:var(--muted); cursor:pointer; font-size:.86rem; }
+    .seg button.on { background:var(--surface); color:var(--accent); box-shadow:var(--shadow-sm); }
+
+    .filters { display:flex; gap:9px; flex-wrap:wrap; align-items:flex-end; }
+    .filters .f { flex:1; min-width:130px; }
+    .filters label { margin-bottom:4px; }
+
+    .status { font-size:.85rem; color:var(--muted); margin:6px 2px; min-height:1.1em; }
+    .status.err { color:var(--danger); }
+    .status.ok { color:var(--green); }
+
+    .card { border:1px solid var(--line); border-radius:12px; padding:13px 15px; margin-bottom:10px; background:var(--surface); box-shadow:var(--shadow-sm); cursor:pointer; transition:border-color .12s, transform .12s; }
+    .card:hover { border-color:var(--accent-border); transform:translateY(-1px); }
+    .card .tags { display:flex; gap:6px; align-items:center; flex-wrap:wrap; font-size:.76rem; color:var(--muted); }
+    .tag { background:var(--surface-2); border-radius:20px; padding:2px 9px; font-weight:600; }
+    .tag.ko { background:color-mix(in srgb, var(--green) 16%, var(--surface)); color:var(--green); }
+    .tag.en { background:color-mix(in srgb, var(--amber) 18%, var(--surface)); color:var(--amber); }
+    .card .ttl { font-weight:800; font-size:1.02rem; margin:7px 0 2px; }
+    .card .meta { font-size:.85rem; color:var(--muted); }
+    .empty { color:var(--muted); text-align:center; padding:26px 8px; font-size:.9rem; }
+
+    /* 상세 */
+    .dv-head { display:flex; gap:10px; align-items:flex-start; flex-wrap:wrap; }
+    .dv-head .ttl { font-size:1.2rem; font-weight:800; }
+    .dv-meta { font-size:.85rem; color:var(--muted); margin-top:3px; }
+    .viewer { margin-top:14px; border:1px solid var(--line); border-radius:12px; background:var(--surface-2); }
+    .viewer .vhead { display:flex; align-items:center; gap:8px; padding:10px 12px; border-bottom:1px solid var(--line); flex-wrap:wrap; }
+    .viewer .vbody { padding:14px 16px; white-space:pre-wrap; line-height:1.7; font-size:.95rem; max-height:60vh; overflow:auto; }
+    .viewer .vbody.pending { color:var(--muted); font-style:italic; }
+    .prog { height:6px; background:var(--surface-2); border:1px solid var(--line); border-radius:4px; overflow:hidden; margin-top:8px; display:none; }
+    .prog > i { display:block; height:100%; width:0; background:var(--accent); transition:width .2s; }
+    .hint { font-size:.8rem; color:var(--muted); margin-top:10px; line-height:1.6; }
+    .fileinfo { font-size:.82rem; color:var(--muted); margin-top:6px; }
+    .dv-actions { display:flex; gap:8px; flex-wrap:wrap; margin-top:12px; }
+    a.filelink { color:var(--green); font-weight:700; text-decoration:none; font-size:.84rem; background:color-mix(in srgb, var(--green) 13%, var(--surface)); border:1px solid color-mix(in srgb, var(--green) 32%, var(--surface)); border-radius:9px; padding:8px 13px; }
+  </style>
+</head>
+<body>
+  <div id="pinGate" style="position:fixed;inset:0;background:#0e1420;z-index:9999;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px;color:#e6ebf2;padding:20px;text-align:center">
+    <div style="font-size:1.3rem;font-weight:700">📘 장비 매뉴얼</div>
+    <div style="color:#8a94a3;font-size:.9rem">접속 PIN을 입력하세요</div>
+    <input id="pinInput" type="password" inputmode="numeric" maxlength="12" placeholder="PIN"
+           style="font-size:1.4rem;text-align:center;letter-spacing:.25em;padding:10px 16px;border-radius:8px;border:1px solid #2a3550;background:#182130;color:#fff;width:200px" />
+    <button id="pinOk" style="background:#2563eb;color:#fff;padding:11px 28px;font-size:1rem;border:0;border-radius:8px;cursor:pointer">확인</button>
+    <div id="pinErr" style="color:#ff6b6b;font-size:.85rem;height:1.1em"></div>
+  </div>
+
+  <div class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">📘 장비 매뉴얼</div>
+      <div class="tb-actions">
+        <a class="tb-btn" href="index.html">🏠 홈</a>
+        <a class="tb-btn" href="ai.html">🤖 AI검색</a>
+        <a class="tb-btn" href="cases.html">🔧 정비사례</a>
+        <button class="tb-btn icon-btn" id="themeToggle" title="라이트/다크 전환">🌙</button>
+      </div>
+    </div>
+  </div>
+
+  <main>
+    <div class="seg" id="seg">
+      <button data-v="list" class="on">📚 매뉴얼 목록</button>
+      <button data-v="add">➕ 등록</button>
+    </div>
+
+    <!-- 목록 -->
+    <section id="viewList" style="margin-top:14px">
+      <div class="panel">
+        <div class="filters">
+          <div class="f"><label>소속국</label><select id="fOffice"></select></div>
+          <div class="f"><label>송신소</label><select id="fSite"></select></div>
+          <div class="f" style="flex:2"><label>검색(제목·모델·장비)</label><input id="fq" placeholder="예: 송신기, DMT, 엑사이터" /></div>
+          <button class="btn sm" id="fGo">검색</button>
+        </div>
+      </div>
+      <div class="status" id="listStatus"></div>
+      <div id="listBox"></div>
+    </section>
+
+    <!-- 등록 -->
+    <section id="viewAdd" style="display:none; margin-top:14px">
+      <div class="panel">
+        <div class="row">
+          <div class="field"><label>소속국</label><select id="office"></select></div>
+          <div class="field"><label>송신소(고지)</label><select id="site"></select></div>
+        </div>
+        <div class="row">
+          <div class="field"><label>장비 종류</label><input id="equip_type" list="equipList" placeholder="예: 송신기 / 엑사이터 / 중계기" /><datalist id="equipList"><option>송신기</option><option>엑사이터(여자기)</option><option>중계기</option><option>RackController</option><option>UPS</option><option>안테나·급전</option></datalist></div>
+          <div class="field"><label>모델명</label><input id="model" placeholder="예: DMT-2000" /></div>
+        </div>
+        <div class="field"><label>매뉴얼 제목 <span style="color:var(--danger)">*</span></label><input id="title" placeholder="예: OOO 송신기 운용 매뉴얼" /></div>
+        <div class="field">
+          <label>매뉴얼 PDF</label>
+          <input id="pdf" type="file" accept="application/pdf,.pdf" />
+          <div class="fileinfo" id="fileinfo">· 원문 텍스트는 업로드 시 자동 추출됩니다. 번역은 저장 후 상세에서 버튼으로 합니다.</div>
+          <div class="prog" id="upProg"><i id="upFill"></i></div>
+        </div>
+        <div class="dv-actions">
+          <button class="btn" id="saveBtn">저장</button>
+          <button class="btn ghost" id="cancelBtn">취소</button>
+          <span class="status" id="addStatus" style="align-self:center"></span>
+        </div>
+        <div class="hint">※ 텍스트가 없는 스캔본 PDF는 번역이 안 될 수 있어요(사진으로만 된 매뉴얼). 이 경우 원본 PDF 열람은 됩니다.</div>
+      </div>
+    </section>
+
+    <!-- 상세 -->
+    <section id="viewDetail" style="display:none; margin-top:14px">
+      <button class="btn ghost sm" id="backBtn" style="margin-bottom:12px">← 목록으로</button>
+      <div class="panel" id="detailBox"></div>
+    </section>
+  </main>
+
+  <script type="module">
+    import { saveManual, updateManual, deleteManual, getManual, listManuals, translateText } from "./manuals.js";
+    import { uploadDoc, docUrl, removeDoc } from "./docStorage.js";
+    import { OFFICE_LIST, OFFICES } from "./sites.js";
+
+    const APP_PIN = "7590";
+    (function () {
+      const gate = document.getElementById("pinGate");
+      if (localStorage.getItem("ilji_pin_ok") === APP_PIN) { gate.remove(); return; }
+      const inp = document.getElementById("pinInput"), err = document.getElementById("pinErr");
+      const go = () => { if (inp.value === APP_PIN) { localStorage.setItem("ilji_pin_ok", APP_PIN); gate.remove(); } else { err.textContent = "PIN이 틀렸어요"; inp.value = ""; inp.focus(); } };
+      document.getElementById("pinOk").addEventListener("click", go);
+      inp.addEventListener("keydown", (e) => { if (e.key === "Enter") go(); });
+      inp.focus();
+    })();
+
+    const tbtn = document.getElementById("themeToggle");
+    function paint(t) { const r = document.documentElement; if (t) r.setAttribute("data-theme", t); else r.removeAttribute("data-theme"); tbtn.textContent = (t ? t === "dark" : matchMedia("(prefers-color-scheme: dark)").matches) ? "☀️" : "🌙"; }
+    paint(localStorage.getItem("ilji_theme"));
+    tbtn.addEventListener("click", () => { const r = document.documentElement; const cur = r.getAttribute("data-theme") || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"); const nx = cur === "dark" ? "light" : "dark"; localStorage.setItem("ilji_theme", nx); paint(nx); });
+
+    const $ = (id) => document.getElementById(id);
+    const esc = (s) => (s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    const fmtSize = (b) => b < 1024 ? b + "B" : b < 1048576 ? (b / 1024).toFixed(0) + "KB" : (b / 1048576).toFixed(1) + "MB";
+
+    // ===== 국/송신소 셀렉트 =====
+    function fillOffices(sel, withAll) { sel.innerHTML = (withAll ? `<option value="">전체</option>` : "") + OFFICE_LIST.map((o) => `<option>${o}</option>`).join(""); }
+    function fillSites(sel, office, withAll) {
+      const sites = OFFICES[office] || [];
+      sel.innerHTML = (withAll ? `<option value="">전체</option>` : `<option value="">(선택)</option>`) + sites.map((s) => `<option>${s}</option>`).join("");
+    }
+    fillOffices($("office"), false); fillSites($("site"), OFFICE_LIST[0], false);
+    fillOffices($("fOffice"), true); fillSites($("fSite"), "", true);
+    $("office").addEventListener("change", () => fillSites($("site"), $("office").value, false));
+    $("fOffice").addEventListener("change", () => { fillSites($("fSite"), $("fOffice").value, true); });
+
+    // ===== 뷰 전환 =====
+    function show(view) {
+      $("viewList").style.display = view === "list" ? "" : "none";
+      $("viewAdd").style.display = view === "add" ? "" : "none";
+      $("viewDetail").style.display = view === "detail" ? "" : "none";
+      $("seg").style.display = view === "detail" ? "none" : "";
+      document.querySelectorAll("#seg button").forEach((b) => b.classList.toggle("on", b.dataset.v === view));
+    }
+    document.querySelectorAll("#seg button").forEach((b) => b.addEventListener("click", () => { const v = b.dataset.v; show(v); if (v === "list") loadList(); if (v === "add") resetAdd(); }));
+
+    // ===== 목록 =====
+    async function loadList() {
+      $("listStatus").textContent = "불러오는 중…"; $("listStatus").className = "status";
+      try {
+        const rows = await listManuals({ office: $("fOffice").value, site: $("fSite").value, q: $("fq").value });
+        renderList(rows);
+        $("listStatus").textContent = rows.length ? `${rows.length}건` : "";
+      } catch (e) {
+        $("listStatus").textContent = "오류: " + errText(e); $("listStatus").className = "status err";
+      }
+    }
+    function renderList(rows) {
+      const box = $("listBox");
+      if (!rows.length) { box.innerHTML = `<div class="empty">등록된 매뉴얼이 없어요. 상단 ‘➕ 등록’으로 추가하세요.</div>`; return; }
+      box.innerHTML = rows.map((r) => `
+        <div class="card" data-id="${r.id}">
+          <div class="tags">
+            ${r.office ? `<span class="tag">${esc(r.office)}</span>` : ""}
+            ${r.site ? `<span class="tag">${esc(r.site)}</span>` : ""}
+            ${r.equip_type ? `<span class="tag">${esc(r.equip_type)}</span>` : ""}
+            <span class="tag ${r.translated_at ? "ko" : "en"}" style="margin-left:auto">${r.translated_at ? "번역본 있음" : "원문만"}</span>
+          </div>
+          <div class="ttl">${esc(r.title)}</div>
+          <div class="meta">${esc(r.model || "")}</div>
+        </div>`).join("");
+      box.querySelectorAll(".card").forEach((c) => c.addEventListener("click", () => openDetail(c.dataset.id)));
+    }
+    $("fGo").addEventListener("click", loadList);
+    $("fq").addEventListener("keydown", (e) => { if (e.key === "Enter") loadList(); });
+    $("fSite").addEventListener("change", loadList);
+
+    // ===== 등록 =====
+    let docInfo = null; // {path, text, size}
+    function resetAdd() {
+      docInfo = null;
+      $("office").value = OFFICE_LIST[0]; fillSites($("site"), OFFICE_LIST[0], false);
+      ["equip_type", "model", "title"].forEach((k) => ($(k).value = ""));
+      $("pdf").value = ""; $("addStatus").textContent = "";
+      $("fileinfo").innerHTML = "· 원문 텍스트는 업로드 시 자동 추출됩니다. 번역은 저장 후 상세에서 버튼으로 합니다.";
+      editingId = null; $("saveBtn").textContent = "저장";
+    }
+    let editingId = null;
+
+    $("pdf").addEventListener("change", async (e) => {
+      const f = e.target.files[0];
+      if (!f) return;
+      const orig = f.size;
+      $("fileinfo").textContent = "압축·텍스트 추출 중… (페이지가 많으면 잠시 걸려요)";
+      $("upProg").style.display = "block"; $("upFill").style.width = "20%";
+      try {
+        const { compressDoc } = await import("./docImport.js");
+        const r = await compressDoc(f);
+        $("upFill").style.width = "60%";
+        const path = `manuals/doc_${Date.now()}.${r.ext}`;
+        await uploadDoc(path, r.blob, r.contentType);
+        $("upFill").style.width = "100%";
+        docInfo = { path, text: r.text || "", size: r.blob.size };
+        $("fileinfo").innerHTML = `✅ ${fmtSize(orig)} → <b>${fmtSize(r.blob.size)}</b> 저장됨 · ` +
+          (r.text ? `원문 텍스트 ${r.text.length.toLocaleString()}자 추출 (번역 가능)` : `<span style="color:var(--amber)">텍스트 없음(스캔본) — 번역 불가, 원본 열람만 가능</span>`);
+      } catch (err) {
+        docInfo = null;
+        $("fileinfo").innerHTML = `<span style="color:var(--danger)">업로드 실패: ${esc(err.message)}</span>`;
+      } finally {
+        setTimeout(() => { $("upProg").style.display = "none"; $("upFill").style.width = "0"; }, 600);
+      }
+    });
+
+    $("saveBtn").addEventListener("click", async () => {
+      const title = $("title").value.trim();
+      if (!title) { $("addStatus").textContent = "제목을 입력하세요."; $("addStatus").className = "status err"; return; }
+      $("saveBtn").disabled = true; $("addStatus").textContent = "저장 중…"; $("addStatus").className = "status";
+      try {
+        const m = {
+          office: $("office").value || null, site: $("site").value || null,
+          equip_type: $("equip_type").value.trim() || null, model: $("model").value.trim() || null,
+          title, src_lang: "auto",
+        };
+        if (docInfo) { m.doc_path = docInfo.path; m.doc_text = docInfo.text || null; }
+        if (editingId) await updateManual(editingId, m);
+        else await saveManual(m);
+        $("addStatus").textContent = "✅ 저장됨"; $("addStatus").className = "status ok";
+        setTimeout(() => { show("list"); loadList(); }, 500);
+      } catch (e) {
+        $("addStatus").textContent = "저장 오류: " + errText(e); $("addStatus").className = "status err";
+      } finally { $("saveBtn").disabled = false; }
+    });
+    $("cancelBtn").addEventListener("click", () => { show("list"); loadList(); });
+
+    // ===== 상세 =====
+    let current = null;    // 현재 매뉴얼 전체 row
+    let paneMode = "ko";   // ko=번역, en=원문
+
+    async function openDetail(id) {
+      show("detail");
+      $("detailBox").innerHTML = `<div class="empty">불러오는 중…</div>`;
+      try {
+        current = await getManual(id);
+        if (!current) { $("detailBox").innerHTML = `<div class="empty">문서를 찾을 수 없어요.</div>`; return; }
+        paneMode = current.translated_text ? "ko" : "en";
+        renderDetail();
+      } catch (e) {
+        $("detailBox").innerHTML = `<div class="empty">오류: ${esc(errText(e))}</div>`;
+      }
+    }
+
+    function renderDetail() {
+      const r = current;
+      const hasKo = !!(r.translated_text && r.translated_text.trim());
+      const hasEn = !!(r.doc_text && r.doc_text.trim());
+      const pdf = r.doc_path ? `<a class="filelink" href="${docUrl(r.doc_path)}" target="_blank" rel="noopener">📎 원본 PDF 열기</a>` : "";
+      const body = paneMode === "ko"
+        ? (hasKo ? esc(r.translated_text) : null)
+        : (hasEn ? esc(r.doc_text) : null);
+      const pendingMsg = paneMode === "ko"
+        ? (hasEn ? "아직 번역하지 않았어요. 아래 ‘번역하기’를 누르세요." : "원문 텍스트가 없어 번역할 수 없어요(스캔본). 원본 PDF를 열어 확인하세요.")
+        : "원문 텍스트가 없어요(스캔본). 원본 PDF를 열어 확인하세요.";
+
+      $("detailBox").innerHTML = `
+        <div class="dv-head">
+          <div style="flex:1">
+            <div class="ttl">${esc(r.title)}</div>
+            <div class="dv-meta">${[r.office, r.site, r.equip_type, r.model].filter(Boolean).map(esc).join(" · ") || "-"}</div>
+          </div>
+        </div>
+        <div class="dv-actions">
+          ${pdf}
+          ${hasEn && !hasKo ? `<button class="btn sm" id="trBtn">🌐 한국어로 번역하기</button>` : ""}
+          ${hasKo ? `<button class="btn ghost sm" id="retrBtn">🔄 다시 번역</button>` : ""}
+          <button class="btn danger sm" id="delBtn" style="margin-left:auto">🗑 삭제</button>
+        </div>
+        <div class="prog" id="trProg"><i id="trFill"></i></div>
+        <div class="status" id="trStatus"></div>
+
+        <div class="viewer">
+          <div class="vhead">
+            <div class="seg" style="padding:3px">
+              <button id="tabKo" class="${paneMode === "ko" ? "on" : ""}" style="padding:6px 13px">🇰🇷 번역본${hasKo ? "" : " ·"}</button>
+              <button id="tabEn" class="${paneMode === "en" ? "on" : ""}" style="padding:6px 13px">🌐 원문</button>
+            </div>
+            <span style="margin-left:auto;font-size:.78rem;color:var(--muted)">${r.translated_at ? "번역: " + new Date(r.translated_at).toLocaleDateString("ko-KR") : ""}</span>
+          </div>
+          <div class="vbody ${body ? "" : "pending"}" id="vbody">${body || pendingMsg}</div>
+        </div>
+        <div class="hint">※ 번역은 무료 자동번역(구글)이라 기술용어는 오역이 있을 수 있어요. 애매하면 원문·원본 PDF로 확인하세요.</div>
+      `;
+
+      $("tabKo").addEventListener("click", () => { paneMode = "ko"; renderDetail(); });
+      $("tabEn").addEventListener("click", () => { paneMode = "en"; renderDetail(); });
+      $("delBtn").addEventListener("click", doDelete);
+      const tr = $("trBtn") || $("retrBtn");
+      if (tr) tr.addEventListener("click", doTranslate);
+    }
+
+    async function doTranslate() {
+      const r = current;
+      if (!(r.doc_text && r.doc_text.trim())) { $("trStatus").textContent = "원문 텍스트가 없어 번역할 수 없어요."; $("trStatus").className = "status err"; return; }
+      const btn = $("trBtn") || $("retrBtn"); if (btn) btn.disabled = true;
+      $("trProg").style.display = "block"; $("trFill").style.width = "4%";
+      $("trStatus").textContent = "번역 중… (긴 문서는 수십 초 걸릴 수 있어요)"; $("trStatus").className = "status";
+      try {
+        const translated = await translateText(r.doc_text, {
+          onProgress: (done, total) => { $("trFill").style.width = Math.round((done / total) * 100) + "%"; $("trStatus").textContent = `번역 중… ${done}/${total}`; },
+        });
+        const updated = await updateManual(r.id, { translated_text: translated, translated_at: new Date().toISOString() });
+        current = updated || { ...r, translated_text: translated, translated_at: new Date().toISOString() };
+        paneMode = "ko";
+        renderDetail();
+        $("trStatus") && ($("trStatus").textContent = "✅ 번역 완료 (저장됨)");
+      } catch (e) {
+        $("trStatus").textContent = "번역 실패: " + errText(e); $("trStatus").className = "status err";
+        if (btn) btn.disabled = false;
+      } finally {
+        setTimeout(() => { const p = $("trProg"); if (p) { p.style.display = "none"; } }, 800);
+      }
+    }
+
+    async function doDelete() {
+      if (!confirm("이 매뉴얼을 삭제할까요? 되돌릴 수 없어요.")) return;
+      try {
+        if (current.doc_path) { try { await removeDoc(current.doc_path); } catch (e) {} }
+        await deleteManual(current.id);
+        show("list"); loadList();
+      } catch (e) {
+        $("trStatus").textContent = "삭제 오류: " + errText(e); $("trStatus").className = "status err";
+      }
+    }
+    $("backBtn").addEventListener("click", () => { show("list"); loadList(); });
+
+    function errText(e) {
+      const m = (e && e.message) || String(e || "");
+      if (/failed to fetch|networkerror|load failed|cors/i.test(m)) return "네트워크/서버 연결 실패 — 잠시 후 다시 시도하세요.";
+      return m;
+    }
+
+    // 최초 로드
+    (function () {
+      const id = new URLSearchParams(location.search).get("id");
+      if (id && localStorage.getItem("ilji_pin_ok") === APP_PIN) { openDetail(id); }
+      else loadList();
+    })();
+  </script>
+</body>
+</html>

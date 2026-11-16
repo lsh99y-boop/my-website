@@ -114,7 +114,7 @@
   <main>
     <div class="searchbox">
       <h1>🤖 AI 정비 지식 검색</h1>
-      <div class="desc">정비사례와 일일업무일지를 <b>한 번에</b> 검색합니다. 자연어로 물어보세요.</div>
+      <div class="desc">정비사례 · 일일업무일지 · <b>장비 매뉴얼</b>을 <b>한 번에</b> 검색합니다. 자연어로 물어보세요.</div>
       <div class="qrow">
         <textarea id="q" placeholder="예: 계룡산 송신기 엑사이터 관련 정비내용 찾아줘"></textarea>
         <button class="btn-primary" id="go">검색</button>
@@ -137,6 +137,10 @@
     <div class="sec">
       <h2>📋 관련 일일업무일지 <span class="cnt" id="cntL"></span></h2>
       <div id="logs"><div class="empty">—</div></div>
+    </div>
+    <div class="sec">
+      <h2>📘 관련 매뉴얼 <span class="cnt" id="cntM"></span></h2>
+      <div id="manuals"><div class="empty">—</div></div>
     </div>
 
     <div class="note">
@@ -209,8 +213,8 @@
     $("aiToggle").addEventListener("click", loadAI);
 
     const SYS = [
-      "너는 방송 송신설비의 정비사례와 일일업무일지를 분석하는 정비 지식 검색 AI다.",
-      "반드시 아래에 제공된 검색 결과(정비사례/일일업무일지)에 있는 내용만 근거로 답한다.",
+      "너는 방송 송신설비의 정비사례·일일업무일지·장비 매뉴얼을 분석하는 정비 지식 검색 AI다.",
+      "반드시 아래에 제공된 검색 결과(정비사례/일일업무일지/장비 매뉴얼)에 있는 내용만 근거로 답한다.",
       "검색 결과에 없는 고장 원인이나 조치방법을 추측하거나 지어내지 않는다.",
       "정보가 없으면 '등록된 정보가 없습니다'라고 표현한다.",
       "같은 시설·장비·날짜가 정비사례와 일지에 함께 나오면 하나의 정비 이력으로 연결해 설명한다.",
@@ -218,10 +222,10 @@
       "형식: [AI 분석] 요약 → [주요 내용] 정리. 데이터가 없는 항목은 쓰지 않는다.",
     ].join(" ");
 
-    async function aiSummarize(question, faults, logs) {
+    async function aiSummarize(question, faults, logs, manuals = []) {
       if (!engine) return;
-      if (!faults.length && !logs.length) { renderAnswer("[AI 분석]\n검색 결과가 없어 분석할 데이터가 없습니다."); return; }
-      const ctx = buildContext(faults, logs);
+      if (!faults.length && !logs.length && !manuals.length) { renderAnswer("[AI 분석]\n검색 결과가 없어 분석할 데이터가 없습니다."); return; }
+      const ctx = buildContext(faults, logs, manuals);
       renderAnswer("[AI 분석]\n작성 중…");
       try {
         const res = await engine.chat.completions.create({
@@ -271,6 +275,22 @@
         </div>`).join("");
     }
 
+    function renderManuals(list) {
+      $("cntM").textContent = list.length ? `${list.length}건` : "";
+      const el = $("manuals");
+      if (!list.length) { el.innerHTML = `<div class="empty">관련 매뉴얼이 없어요</div>`; return; }
+      el.innerHTML = list.map((m) => `
+        <div class="rec">
+          <div class="top"><span class="tag" style="background:color-mix(in srgb, var(--amber) 16%, var(--surface));color:var(--amber)">매뉴얼</span><span class="tag">${esc(m.office)}</span>${m.site ? `<span class="tag">${esc(m.site)}</span>` : ""}${m.model ? `<span class="tag">${esc(m.model)}</span>` : ""}<span style="margin-left:auto">${m.hasKo ? "번역본" : "원문"}</span></div>
+          <div class="model">${esc(m.title || "(제목 없음)")}</div>
+          ${m.snippet ? `<div class="snip">${esc(m.snippet)}</div>` : ""}
+          <div class="acts">
+            <a href="manuals.html?id=${encodeURIComponent(m.id)}">📘 매뉴얼 열기</a>
+            ${m.doc_path ? `<a class="file" href="${docUrl(m.doc_path)}" target="_blank" rel="noopener">📎 원본 PDF</a>` : ""}
+          </div>
+        </div>`).join("");
+    }
+
     async function doSearch() {
       const question = $("q").value.trim();
       if (!question) { setStatus("질문을 입력하세요.", true); return; }
@@ -278,15 +298,15 @@
       $("aiAnswer").innerHTML = "";
       setStatus("검색 중…");
       try {
-        const { cond, faults, logs } = await knowledgeSearch(question);
-        renderFaults(faults); renderLogs(logs);
+        const { cond, faults, logs, manuals } = await knowledgeSearch(question);
+        renderFaults(faults); renderLogs(logs); renderManuals(manuals || []);
         const bits = [];
         if (cond.sites.length) bits.push("시설:" + cond.sites.join(","));
         if (cond.equips.length) bits.push("장비:" + cond.equips.join(","));
         if (cond.topics.length) bits.push("키워드:" + cond.topics.join(","));
         if (cond.from) bits.push("기간:" + cond.from + (cond.to ? "~" + cond.to : "~"));
-        setStatus(`정비사례 ${faults.length}건 · 일지 ${logs.length}건` + (bits.length ? ` (인식: ${bits.join(" / ")})` : ""));
-        if (engine) aiSummarize(question, faults, logs);
+        setStatus(`정비사례 ${faults.length}건 · 일지 ${logs.length}건 · 매뉴얼 ${(manuals || []).length}건` + (bits.length ? ` (인식: ${bits.join(" / ")})` : ""));
+        if (engine) aiSummarize(question, faults, logs, manuals || []);
       } catch (e) {
         setStatus("검색 오류: " + errText(e), true);
       } finally { $("go").disabled = false; }

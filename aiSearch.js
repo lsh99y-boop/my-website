@@ -114,15 +114,62 @@ async function searchLogs(cond) {
   return out.slice(0, 15);
 }
 
+// ===== 매뉴얼 검색 (원문 + 번역본 전체 대상) =====
+const MANUAL_STOP = new Set([
+  "매뉴얼", "메뉴얼", "문서", "찾아줘", "찾아", "알려줘", "알려", "관련", "내용", "설명", "어떻게", "방법",
+  "있어", "있나", "있는", "부분", "대해", "대한", "에서", "그리고", "해줘", "보여줘", "뭐야", "무엇",
+]);
+// 질문에서 매뉴얼 본문과 대조할 검색어 추출(고정 키워드 + 일반 단어)
+function manualTerms(cond) {
+  const words = (cond.raw.toLowerCase().match(/[\p{L}\p{N}]{2,}/gu) || []).filter((w) => !MANUAL_STOP.has(w));
+  return [...new Set([...cond.keywords.map((k) => k.toLowerCase()), ...words])];
+}
+function manualSnippet(text, terms) {
+  if (!text) return "";
+  const lines = text.split(/\n+/).map((l) => l.trim()).filter(Boolean);
+  const hit = terms.length ? lines.filter((l) => terms.some((t) => l.toLowerCase().includes(t))) : lines;
+  return (hit.length ? hit : lines).slice(0, 3).join("\n").slice(0, 320);
+}
+async function searchManuals(cond) {
+  let query = supabase
+    .from("manuals")
+    .select("id,office,site,equip_type,model,title,doc_path,doc_text,translated_text")
+    .order("created_at", { ascending: false })
+    .limit(300);
+  if (cond.offices.length === 1) query = query.eq("office", cond.offices[0]);
+  const { data, error } = await query;
+  if (error) throw error;
+  const terms = manualTerms(cond);
+  const out = [];
+  for (const r of data || []) {
+    const ko = r.translated_text || "", en = r.doc_text || "";
+    const meta = [r.title, r.model, r.equip_type].filter(Boolean).join(" ");
+    const hay = (meta + "\n" + ko + "\n" + en).toLowerCase();
+    const siteHit = cond.sites.length ? cond.sites.includes((r.site || "").trim()) : false;
+    let hits = 0; const matched = [];
+    for (const t of terms) if (t && hay.includes(t)) { hits++; matched.push(t); }
+    let score = 0;
+    if (siteHit) score += 3;
+    score += hits * 2;
+    if (cond.sites.length && !siteHit) continue;         // 시설 지정 시 그 시설만
+    if (!terms.length && !cond.sites.length) score = 1;  // 조건 없음 → 최신
+    if (score <= 0) continue;
+    const snippet = manualSnippet(ko, matched) || manualSnippet(en, matched);
+    out.push({ type: "manual", id: r.id, office: r.office || "", site: r.site || "", equip: r.equip_type || "", model: r.model || "", title: r.title || "", doc_path: r.doc_path || "", hasKo: !!ko, snippet, score });
+  }
+  out.sort((a, b) => b.score - a.score);
+  return out.slice(0, 10);
+}
+
 // 통합 검색
 export async function knowledgeSearch(question) {
   const cond = extractConditions(question);
-  const [faults, logs] = await Promise.all([searchFaults(cond), searchLogs(cond)]);
-  return { cond, faults, logs };
+  const [faults, logs, manuals] = await Promise.all([searchFaults(cond), searchLogs(cond), searchManuals(cond)]);
+  return { cond, faults, logs, manuals };
 }
 
 // LLM 컨텍스트용 텍스트(검색 결과만)
-export function buildContext(faults, logs) {
+export function buildContext(faults, logs, manuals = []) {
   const lines = [];
   lines.push("[정비사례]");
   if (faults.length) faults.forEach((f, i) => lines.push(`${i + 1}. ${f.date} | ${f.office} ${f.site} | 장비:${f.equip} 모델:${f.model} | 증상:${f.symptom || "-"} | 조치:${f.action || "-"}`));
@@ -130,6 +177,10 @@ export function buildContext(faults, logs) {
   lines.push("");
   lines.push("[일일업무일지]");
   if (logs.length) logs.forEach((l, i) => lines.push(`${i + 1}. ${l.date} | ${l.office} ${l.site} | ${l.text.replace(/\n/g, " / ")}`));
+  else lines.push("(없음)");
+  lines.push("");
+  lines.push("[장비 매뉴얼]");
+  if (manuals.length) manuals.forEach((m, i) => lines.push(`${i + 1}. ${m.title} | ${m.office} ${m.site} | 모델:${m.model || "-"} | 발췌:${(m.snippet || "").replace(/\n/g, " / ")}`));
   else lines.push("(없음)");
   return lines.join("\n");
 }
