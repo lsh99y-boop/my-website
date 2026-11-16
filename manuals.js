@@ -39,22 +39,33 @@ export async function listManuals({ office, site, model, q } = {}) {
 }
 
 // ===== 무료 자동번역 (구글 비공식 엔드포인트, 키 불필요) =====
-// 원문언어 자동감지(sl=auto) → 한국어(tl=ko). 긴 텍스트는 청크로 나눠 번역 후 합침.
+// 원문언어 자동감지(sl=auto) → 한국어(tl=ko). 긴 텍스트는 "문장 단위"로 끊어 번역.
+// (문장 중간에서 잘리면 번역이 깨지므로, 경계를 문장→단어 순으로 맞춘다.)
+function splitSentences(text) {
+  return String(text || "")
+    .replace(/\r/g, "")
+    .split(/(?<=[.!?。！？])\s+|\n+/)   // 마침표·물음표·느낌표(영/일) 또는 줄바꿈 뒤에서 분할
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
 function chunkText(text, max = 1600) {
-  const lines = String(text || "").split(/\n/);
+  const sents = splitSentences(text);
   const chunks = [];
   let cur = "";
-  for (const ln of lines) {
-    if ((cur + "\n" + ln).length > max) {
+  for (const sent of sents) {
+    if (sent.length > max) {
+      // 한 문장이 한도보다 길면 단어(공백) 경계로만 분할 — 단어 중간은 안 자름
       if (cur) { chunks.push(cur); cur = ""; }
-      if (ln.length > max) {
-        let s = ln;
-        while (s.length > max) { chunks.push(s.slice(0, max)); s = s.slice(max); }
-        cur = s;
-      } else cur = ln;
-    } else {
-      cur = cur ? cur + "\n" + ln : ln;
+      let piece = "";
+      for (const w of sent.split(/(\s+)/)) {
+        if ((piece + w).length > max) { if (piece.trim()) chunks.push(piece.trim()); piece = w; }
+        else piece += w;
+      }
+      if (piece.trim()) cur = piece.trim();
+      continue;
     }
+    if (cur && (cur + " " + sent).length > max) { chunks.push(cur); cur = sent; }
+    else cur = cur ? cur + " " + sent : sent;
   }
   if (cur) chunks.push(cur);
   return chunks;
