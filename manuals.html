@@ -353,23 +353,25 @@
     // ===== 상세 =====
     let current = null;
 
+    let pdfDoc = null, pdfPages = [], curPage = 1;
+
     async function openDetail(id) {
       show("detail");
       $("detailBox").innerHTML = `<div class="empty">불러오는 중…</div>`;
       try {
         current = await getManual(id);
         if (!current) { $("detailBox").innerHTML = `<div class="empty">문서를 찾을 수 없어요.</div>`; return; }
-        renderDetail(($("fq").value || "").trim());   // 목록에서 검색한 단어가 있으면 문서 내 찾기에 미리 채움
+        pdfDoc = null; pdfPages = []; curPage = 1;
+        renderDetail(($("fq").value || "").trim());   // 목록 검색어가 있으면 PDF 찾기에 미리 채움
       } catch (e) {
         $("detailBox").innerHTML = `<div class="empty">오류: ${esc(errText(e))}</div>`;
       }
     }
 
-    let findIdx = -1, findCount = 0;
     function renderDetail(prefill) {
       const r = current;
-      const hasText = !!(r.doc_text && r.doc_text.trim());
-      const pdf = r.doc_path ? `<a class="filelink" href="${docUrl(r.doc_path)}" target="_blank" rel="noopener">📎 원본 PDF 열기</a>` : "";
+      const hasPdf = !!r.doc_path;
+      const pdf = hasPdf ? `<a class="filelink" href="${docUrl(r.doc_path)}" target="_blank" rel="noopener">📎 원본 PDF 열기(새 창)</a>` : "";
       $("detailBox").innerHTML = `
         <div class="dv-head">
           <div style="flex:1">
@@ -381,56 +383,90 @@
           ${pdf}
           <button class="btn danger sm" id="delBtn" style="margin-left:auto">🗑 삭제</button>
         </div>
-        ${hasText ? `
-        <div class="viewer" style="margin-top:14px">
-          <div class="vhead">
-            <b style="font-size:.9rem;white-space:nowrap">🔎 매뉴얼 내용에서 찾기</b>
-            <input id="findq" placeholder="키워드 입력 (Ctrl+F 처럼)" style="flex:1;min-width:120px;padding:7px 11px" value="${esc(prefill || "")}" />
-            <span id="findCount" style="font-size:.8rem;color:var(--muted);white-space:nowrap"></span>
-            <button class="btn ghost sm" id="findPrev" title="이전">▲</button>
-            <button class="btn ghost sm" id="findNext" title="다음">▼</button>
-          </div>
-          <div class="vbody" id="vbody"></div>
-        </div>` : `<div class="hint" style="margin-top:14px">이 매뉴얼은 추출된 텍스트가 없어요(스캔 이미지 PDF). 원본 PDF를 열어 확인하세요.</div>`}
+        ${hasPdf ? `
+        <div class="pager">
+          <b style="white-space:nowrap">📄 원본 PDF에서 찾기</b>
+          <input id="pdfq" placeholder="키워드 → 그 글자가 있는 PDF 페이지를 보여줘요" style="flex:1;min-width:150px;padding:7px 11px" value="${esc(prefill || "")}" />
+          <button class="btn sm" id="pdfFind">찾기</button>
+          <span class="pgnav">
+            <button class="btn ghost sm" id="pgPrev">◀</button>
+            <input id="pgNum" type="number" min="1" value="1" style="width:56px;text-align:center" /> / <span id="pgTot">…</span>
+            <button class="btn ghost sm" id="pgNext">▶</button>
+          </span>
+        </div>
+        <div class="status" id="pdfStatus"></div>
+        <div id="matchList" style="margin:6px 0"></div>
+        <div class="pgCanvasBox" style="margin-top:4px"><canvas id="pgCanvas"></canvas></div>
+        <div class="hint">※ PDF 글자(텍스트 레이어) 기준으로 찾아요. 스캔 이미지 페이지(도면 등)는 글자가 없어 검색이 안 되고, 그땐 글자가 있는 페이지(목차 등)로 안내돼요.</div>
+        ` : `<div class="hint" style="margin-top:14px">첨부된 PDF가 없어요.</div>`}
       `;
       $("delBtn").addEventListener("click", doDelete);
-      if (hasText) {
-        const fq = $("findq");
-        const run = () => applyFind(fq.value);
-        fq.addEventListener("input", run);
-        fq.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); e.shiftKey ? gotoMatch(findIdx - 1) : gotoMatch(findIdx + 1); } });
-        $("findPrev").addEventListener("click", () => gotoMatch(findIdx - 1));
-        $("findNext").addEventListener("click", () => gotoMatch(findIdx + 1));
-        applyFind(fq.value);
-        if (prefill) fq.focus();
+      if (hasPdf) {
+        $("pdfFind").addEventListener("click", () => searchPdf($("pdfq").value));
+        $("pdfq").addEventListener("keydown", (e) => { if (e.key === "Enter") searchPdf($("pdfq").value); });
+        $("pgPrev").addEventListener("click", () => renderPdfPage(curPage - 1));
+        $("pgNext").addEventListener("click", () => renderPdfPage(curPage + 1));
+        $("pgNum").addEventListener("change", () => renderPdfPage(parseInt($("pgNum").value, 10) || 1));
+        initPdf(docUrl(r.doc_path), prefill);
       }
     }
 
-    // 문서 내 찾기 — 모든 일치 하이라이트 + 개수/현재 위치 표시
-    function applyFind(q) {
-      const raw = (current && current.doc_text) || "";
-      const vb = $("vbody"); if (!vb) return;
-      q = (q || "").trim();
-      if (!q) { vb.innerHTML = esc(raw); findCount = 0; findIdx = -1; $("findCount").textContent = ""; return; }
-      const low = raw.toLowerCase(), kw = q.toLowerCase();
-      let html = "", last = 0, i, n = 0;
-      while ((i = low.indexOf(kw, last)) >= 0) {
-        html += esc(raw.slice(last, i)) + `<mark class="fm" data-i="${n}" style="${MARK}">` + esc(raw.slice(i, i + q.length)) + `</mark>`;
-        last = i + q.length; n++;
+    async function initPdf(url, prefill) {
+      $("pdfStatus").textContent = "PDF 불러오는 중…"; $("pdfStatus").className = "status";
+      try {
+        const pdfjsLib = await import("https://esm.sh/pdfjs-dist@4.7.76/build/pdf.min.mjs");
+        pdfjsLib.GlobalWorkerOptions.workerSrc = "https://esm.sh/pdfjs-dist@4.7.76/build/pdf.worker.min.mjs";
+        pdfDoc = await pdfjsLib.getDocument(url).promise;
+        $("pgTot").textContent = pdfDoc.numPages;
+        $("pgNum").max = pdfDoc.numPages;
+        pdfPages = String(current.doc_text || "").split("\n");   // 저장된 원문(페이지당 한 줄) 재사용
+        await renderPdfPage(1);
+        $("pdfStatus").textContent = "";
+        if (prefill && prefill.trim()) searchPdf(prefill);
+      } catch (e) {
+        $("pdfStatus").textContent = "PDF 로드 실패: " + errText(e); $("pdfStatus").className = "status err";
       }
-      html += esc(raw.slice(last));
-      vb.innerHTML = html;
-      findCount = n;
-      gotoMatch(n ? 0 : -1);
     }
-    function gotoMatch(i) {
-      if (!findCount) { $("findCount").textContent = "결과 없음"; findIdx = -1; return; }
-      findIdx = ((i % findCount) + findCount) % findCount;       // 순환
-      $("findCount").textContent = `${findIdx + 1} / ${findCount}`;
-      const marks = document.querySelectorAll("#vbody .fm");
-      marks.forEach((m, k) => m.style.background = k === findIdx ? "var(--amber)" : "var(--accent-weak)");
-      const cur = marks[findIdx];
-      if (cur) cur.scrollIntoView({ block: "center", behavior: "smooth" });
+
+    async function renderPdfPage(n) {
+      if (!pdfDoc) return;
+      n = Math.max(1, Math.min(pdfDoc.numPages, n));
+      curPage = n; $("pgNum").value = n;
+      const page = await pdfDoc.getPage(n);
+      const vp = page.getViewport({ scale: 1.8 });
+      const cv = $("pgCanvas");
+      cv.width = Math.floor(vp.width); cv.height = Math.floor(vp.height);
+      const ctx = cv.getContext("2d");
+      ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, cv.width, cv.height);
+      await page.render({ canvasContext: ctx, viewport: vp }).promise;
+    }
+
+    // 키워드 → 그 글자가 있는 PDF 페이지들을 찾아 목록으로, 클릭 시 해당 페이지 렌더
+    function searchPdf(q) {
+      q = (q || "").trim();
+      const box = $("matchList");
+      if (!box) return;
+      if (!q) { box.innerHTML = ""; return; }
+      const kw = q.toLowerCase();
+      const matches = [];
+      for (let i = 0; i < pdfPages.length; i++) {
+        const line = pdfPages[i];
+        if (!line) continue;
+        const t = line.replace(/\s+/g, " ");
+        const idx = t.toLowerCase().indexOf(kw);
+        if (idx < 0) continue;
+        const s = Math.max(0, idx - 40), e = Math.min(t.length, idx + kw.length + 70);
+        const snip = (s > 0 ? "… " : "") + esc(t.slice(s, idx)) + `<mark style="${MARK}">` + esc(t.slice(idx, idx + q.length)) + `</mark>` + esc(t.slice(idx + q.length, e)) + (e < t.length ? " …" : "");
+        matches.push({ page: i + 1, snip });
+      }
+      if (!matches.length) {
+        box.innerHTML = `<div class="status err">PDF 글자에서 '${esc(q)}'를 찾지 못했어요. (스캔 이미지 페이지는 글자가 없어 검색이 안 돼요 — 원본 PDF를 열어 확인하세요.)</div>`;
+        return;
+      }
+      box.innerHTML = `<div class="status ok">${matches.length}개 페이지에서 발견 — 클릭하면 그 PDF 페이지를 보여줘요</div>` +
+        matches.map((m) => `<div class="card matchrow" data-p="${m.page}" style="padding:9px 12px;margin-bottom:6px;cursor:pointer"><b style="color:var(--accent)">p.${m.page}</b> &nbsp;<span style="font-size:.9rem">${m.snip}</span></div>`).join("");
+      box.querySelectorAll(".matchrow").forEach((el) => el.addEventListener("click", () => renderPdfPage(parseInt(el.dataset.p, 10))));
+      renderPdfPage(matches[0].page);   // 첫 매치 페이지로 바로 이동
     }
 
     async function doDelete() {
