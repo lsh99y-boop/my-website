@@ -131,31 +131,26 @@ function manualSnippet(text, terms) {
   return (hit.length ? hit : lines).slice(0, 3).join("\n").slice(0, 320);
 }
 async function searchManuals(cond) {
-  let query = supabase
+  // 매뉴얼은 전국 공용(국/시설 구분 없음) → 질문의 단어가 본문·메타에 맞는지로만 판단
+  const { data, error } = await supabase
     .from("manuals")
-    .select("id,office,site,equip_type,model,title,doc_path,doc_text,translated_text")
+    .select("id,equip_type,maker,model,title,doc_path,doc_text,translated_text")
     .order("created_at", { ascending: false })
     .limit(300);
-  if (cond.offices.length === 1) query = query.eq("office", cond.offices[0]);
-  const { data, error } = await query;
   if (error) throw error;
   const terms = manualTerms(cond);
+  if (!terms.length) return [];                          // 매뉴얼은 검색어가 있을 때만 노출(최신 나열 안 함)
   const out = [];
   for (const r of data || []) {
     const ko = r.translated_text || "", en = r.doc_text || "";
-    const meta = [r.title, r.model, r.equip_type].filter(Boolean).join(" ");
+    const meta = [r.title, r.maker, r.model, r.equip_type].filter(Boolean).join(" ");
     const hay = (meta + "\n" + ko + "\n" + en).toLowerCase();
-    const siteHit = cond.sites.length ? cond.sites.includes((r.site || "").trim()) : false;
     let hits = 0; const matched = [];
     for (const t of terms) if (t && hay.includes(t)) { hits++; matched.push(t); }
-    let score = 0;
-    if (siteHit) score += 3;
-    score += hits * 2;
-    if (cond.sites.length && !siteHit) continue;         // 시설 지정 시 그 시설만
-    if (!terms.length && !cond.sites.length) score = 1;  // 조건 없음 → 최신
+    const score = hits * 2;
     if (score <= 0) continue;
     const snippet = manualSnippet(ko, matched) || manualSnippet(en, matched);
-    out.push({ type: "manual", id: r.id, office: r.office || "", site: r.site || "", equip: r.equip_type || "", model: r.model || "", title: r.title || "", doc_path: r.doc_path || "", hasKo: !!ko, snippet, score });
+    out.push({ type: "manual", id: r.id, office: "", site: "", equip: r.equip_type || "", maker: r.maker || "", model: r.model || "", title: r.title || "", doc_path: r.doc_path || "", hasKo: !!ko, snippet, score });
   }
   out.sort((a, b) => b.score - a.score);
   return out.slice(0, 10);

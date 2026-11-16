@@ -25,15 +25,13 @@ export async function getManual(id) {
 export async function listManuals({ office, site, model, q } = {}) {
   let query = supabase
     .from("manuals")
-    .select("id,office,site,equip_type,model,title,doc_path,translated_at,created_at")
+    .select("id,equip_type,maker,model,title,doc_path,translated_at,created_at")
     .order("created_at", { ascending: false })
     .limit(300);
-  if (office) query = query.eq("office", office);
-  if (site) query = query.eq("site", site);
   if (model) query = query.ilike("model", `%${model}%`);
   if (q && q.trim()) {
     const kw = q.trim().replace(/[%,]/g, " ");
-    query = query.or(`title.ilike.%${kw}%,model.ilike.%${kw}%,equip_type.ilike.%${kw}%`);
+    query = query.or(`title.ilike.%${kw}%,model.ilike.%${kw}%,maker.ilike.%${kw}%,equip_type.ilike.%${kw}%`);
   }
   const { data, error } = await query;
   if (error) throw error;

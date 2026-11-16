@@ -138,9 +138,7 @@
     <section id="viewList" style="margin-top:14px">
       <div class="panel">
         <div class="filters">
-          <div class="f"><label>소속국</label><select id="fOffice"></select></div>
-          <div class="f"><label>송신소</label><select id="fSite"></select></div>
-          <div class="f" style="flex:2"><label>검색(제목·모델·장비)</label><input id="fq" placeholder="예: 송신기, DMT, 엑사이터" /></div>
+          <div class="f" style="flex:3"><label>검색 (제목 · 모델 · 장비)</label><input id="fq" placeholder="예: 송신기, DMT, 엑사이터" /></div>
           <button class="btn sm" id="fGo">검색</button>
         </div>
       </div>
@@ -152,11 +150,8 @@
     <section id="viewAdd" style="display:none; margin-top:14px">
       <div class="panel">
         <div class="row">
-          <div class="field"><label>소속국</label><select id="office"></select></div>
-          <div class="field"><label>송신소(고지)</label><select id="site"></select></div>
-        </div>
-        <div class="row">
-          <div class="field"><label>장비 종류</label><input id="equip_type" list="equipList" placeholder="예: 송신기 / 엑사이터 / 중계기" /><datalist id="equipList"><option>송신기</option><option>엑사이터(여자기)</option><option>중계기</option><option>RackController</option><option>UPS</option><option>안테나·급전</option></datalist></div>
+          <div class="field"><label>장비 종류</label><input id="equip_type" list="equipList" placeholder="예: TV / FM / UHD / 측정장비" /><datalist id="equipList"><option>TV</option><option>FM</option><option>UHD</option><option>측정장비</option></datalist></div>
+          <div class="field"><label>제조사</label><input id="maker" placeholder="예: Rohde&Schwarz, NEC, GatesAir" /></div>
           <div class="field"><label>모델명</label><input id="model" placeholder="예: DMT-2000" /></div>
         </div>
         <div class="field"><label>매뉴얼 제목 <span style="color:var(--danger)">*</span></label><input id="title" placeholder="예: OOO 송신기 운용 매뉴얼" /></div>
@@ -190,7 +185,6 @@
   <script type="module">
     import { saveManual, updateManual, deleteManual, getManual, listManuals, translateText } from "./manuals.js";
     import { uploadDoc, docUrl, removeDoc } from "./docStorage.js";
-    import { OFFICE_LIST, OFFICES } from "./sites.js";
 
     const APP_PIN = "7590";
     (function () {
@@ -212,16 +206,7 @@
     const esc = (s) => (s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
     const fmtSize = (b) => b < 1024 ? b + "B" : b < 1048576 ? (b / 1024).toFixed(0) + "KB" : (b / 1048576).toFixed(1) + "MB";
 
-    // ===== 국/송신소 셀렉트 =====
-    function fillOffices(sel, withAll) { sel.innerHTML = (withAll ? `<option value="">전체</option>` : "") + OFFICE_LIST.map((o) => `<option>${o}</option>`).join(""); }
-    function fillSites(sel, office, withAll) {
-      const sites = OFFICES[office] || [];
-      sel.innerHTML = (withAll ? `<option value="">전체</option>` : `<option value="">(선택)</option>`) + sites.map((s) => `<option>${s}</option>`).join("");
-    }
-    fillOffices($("office"), false); fillSites($("site"), OFFICE_LIST[0], false);
-    fillOffices($("fOffice"), true); fillSites($("fSite"), "", true);
-    $("office").addEventListener("change", () => fillSites($("site"), $("office").value, false));
-    $("fOffice").addEventListener("change", () => { fillSites($("fSite"), $("fOffice").value, true); });
+    // (매뉴얼은 전국 공용 — 소속국/송신소 구분 없음)
 
     // ===== 뷰 전환 =====
     function show(view) {
@@ -237,7 +222,7 @@
     async function loadList() {
       $("listStatus").textContent = "불러오는 중…"; $("listStatus").className = "status";
       try {
-        const rows = await listManuals({ office: $("fOffice").value, site: $("fSite").value, q: $("fq").value });
+        const rows = await listManuals({ q: $("fq").value });
         renderList(rows);
         $("listStatus").textContent = rows.length ? `${rows.length}건` : "";
       } catch (e) {
@@ -250,26 +235,22 @@
       box.innerHTML = rows.map((r) => `
         <div class="card" data-id="${r.id}">
           <div class="tags">
-            ${r.office ? `<span class="tag">${esc(r.office)}</span>` : ""}
-            ${r.site ? `<span class="tag">${esc(r.site)}</span>` : ""}
             ${r.equip_type ? `<span class="tag">${esc(r.equip_type)}</span>` : ""}
             <span class="tag ${r.translated_at ? "ko" : "en"}" style="margin-left:auto">${r.translated_at ? "번역본 있음" : "원문만"}</span>
           </div>
           <div class="ttl">${esc(r.title)}</div>
-          <div class="meta">${esc(r.model || "")}</div>
+          <div class="meta">${[r.maker, r.model].filter(Boolean).map(esc).join(" · ")}</div>
         </div>`).join("");
       box.querySelectorAll(".card").forEach((c) => c.addEventListener("click", () => openDetail(c.dataset.id)));
     }
     $("fGo").addEventListener("click", loadList);
     $("fq").addEventListener("keydown", (e) => { if (e.key === "Enter") loadList(); });
-    $("fSite").addEventListener("change", loadList);
 
     // ===== 등록 =====
     let docInfo = null; // {path, text, size}
     function resetAdd() {
       docInfo = null;
-      $("office").value = OFFICE_LIST[0]; fillSites($("site"), OFFICE_LIST[0], false);
-      ["equip_type", "model", "title"].forEach((k) => ($(k).value = ""));
+      ["equip_type", "maker", "model", "title"].forEach((k) => ($(k).value = ""));
       $("pdf").value = ""; $("addStatus").textContent = "";
       const dm = $("drop").querySelector(".main"); if (dm) dm.innerHTML = '여기로 PDF를 <b>끌어다 놓거나</b> 눌러서 선택';
       $("fileinfo").innerHTML = "· 원문 텍스트는 업로드 시 자동 추출됩니다. 번역은 저장 후 상세에서 버튼으로 합니다.";
@@ -322,9 +303,8 @@
       $("saveBtn").disabled = true; $("addStatus").textContent = "저장 중…"; $("addStatus").className = "status";
       try {
         const m = {
-          office: $("office").value || null, site: $("site").value || null,
-          equip_type: $("equip_type").value.trim() || null, model: $("model").value.trim() || null,
-          title, src_lang: "auto",
+          equip_type: $("equip_type").value.trim() || null, maker: $("maker").value.trim() || null,
+          model: $("model").value.trim() || null, title, src_lang: "auto",
         };
         if (docInfo) { m.doc_path = docInfo.path; m.doc_text = docInfo.text || null; }
         if (editingId) await updateManual(editingId, m);
@@ -370,7 +350,7 @@
         <div class="dv-head">
           <div style="flex:1">
             <div class="ttl">${esc(r.title)}</div>
-            <div class="dv-meta">${[r.office, r.site, r.equip_type, r.model].filter(Boolean).map(esc).join(" · ") || "-"}</div>
+            <div class="dv-meta">${[r.equip_type, r.maker, r.model].filter(Boolean).map(esc).join(" · ") || "-"}</div>
           </div>
         </div>
         <div class="dv-actions">

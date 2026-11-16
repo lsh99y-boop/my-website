@@ -6,9 +6,8 @@
 
 create table if not exists public.manuals (
   id              bigint generated always as identity primary key,
-  office          text,          -- 소속국
-  site            text,          -- 송신소(고지)
-  equip_type      text,          -- 장비 종류(송신기/엑사이터/중계기 등)
+  equip_type      text,          -- 장비 종류(TV/FM/UHD/측정장비 등)
+  maker           text,          -- 제조사
   model           text,          -- 모델명
   title           text not null, -- 매뉴얼 제목
   src_lang        text,          -- 원문 언어(표시용, 'auto' 가능)
@@ -19,6 +18,9 @@ create table if not exists public.manuals (
   created_at      timestamptz not null default now()
 );
 
+-- 이미 테이블을 만든 뒤라면: 아래가 제조사 컬럼을 추가합니다(없을 때만).
+alter table public.manuals add column if not exists maker text;
+
 alter table public.manuals enable row level security;
 
 create policy "manuals 읽기: 모두" on public.manuals for select using (true);
@@ -26,5 +28,5 @@ create policy "manuals 등록: 모두" on public.manuals for insert with check (
 create policy "manuals 수정: 모두" on public.manuals for update using (true) with check (true);
 create policy "manuals 삭제: 모두" on public.manuals for delete using (true);
 
-create index if not exists manuals_office_idx on public.manuals (office, site);
 create index if not exists manuals_model_idx on public.manuals (model);
+create index if not exists manuals_maker_idx on public.manuals (maker);
