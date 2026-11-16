@@ -297,18 +297,30 @@
       if (!isPdf) { $("fileinfo").innerHTML = `<span style="color:var(--danger)">PDF 파일만 올릴 수 있어요.</span>`; return; }
       const orig = f.size;
       $("drop").querySelector(".main").innerHTML = `📎 <b>${esc(f.name)}</b>`;
-      $("fileinfo").textContent = "압축·텍스트 추출 중… (페이지가 많으면 잠시 걸려요)";
+      $("fileinfo").textContent = "텍스트 추출·업로드 중… (페이지가 많으면 잠시 걸려요)";
       $("upProg").style.display = "block"; $("upFill").style.width = "20%";
       try {
-        const { compressDoc } = await import("./docImport.js");
-        const r = await compressDoc(f);
-        $("upFill").style.width = "60%";
-        const path = `manuals/doc_${Date.now()}.${r.ext}`;
-        await uploadDoc(path, r.blob, r.contentType);
+        // 매뉴얼은 원본 PDF를 그대로 저장(글자 레이어 보존 → 페이지 내 찾기·하이라이트 가능).
+        // 텍스트는 재렌더 없이 추출만(페이지당 한 줄).
+        let text = "";
+        try {
+          const pdfjsLib = await import("https://esm.sh/pdfjs-dist@4.7.76/build/pdf.min.mjs");
+          pdfjsLib.GlobalWorkerOptions.workerSrc = "https://esm.sh/pdfjs-dist@4.7.76/build/pdf.worker.min.mjs";
+          const buf = await f.arrayBuffer();
+          const pdf = await pdfjsLib.getDocument({ data: buf.slice(0), cMapUrl: "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.7.76/cmaps/", cMapPacked: true }).promise;
+          for (let i = 1; i <= pdf.numPages; i++) {
+            try { const p = await pdf.getPage(i); const tc = await p.getTextContent(); text += tc.items.map((it) => it.str).join(" ") + "\n"; } catch (e) {}
+            if (i % 20 === 0) $("upFill").style.width = Math.min(90, 20 + Math.round((i / pdf.numPages) * 60)) + "%";
+          }
+        } catch (e) {}
+        $("upFill").style.width = "92%";
+        const path = `manuals/doc_${Date.now()}.pdf`;
+        await uploadDoc(path, f, f.type || "application/pdf");   // 원본 그대로 업로드
         $("upFill").style.width = "100%";
-        docInfo = { path, text: r.text || "", size: r.blob.size };
-        $("fileinfo").innerHTML = `✅ ${fmtSize(orig)} → <b>${fmtSize(r.blob.size)}</b> 저장됨 · ` +
-          (r.text ? `원문 텍스트 ${r.text.length.toLocaleString()}자 추출 (번역 가능)` : `<span style="color:var(--amber)">텍스트 없음(스캔본) — 번역 불가, 원본 열람만 가능</span>`);
+        text = text.trim();
+        docInfo = { path, text, size: f.size };
+        $("fileinfo").innerHTML = `✅ <b>${fmtSize(f.size)}</b> 저장됨(원본) · ` +
+          (text ? `원문 텍스트 ${text.length.toLocaleString()}자 추출 — 페이지 내 찾기 가능` : `<span style="color:var(--amber)">글자 없음(스캔 이미지 PDF) — 원본 열람만 가능</span>`);
       } catch (err) {
         docInfo = null;
         $("fileinfo").innerHTML = `<span style="color:var(--danger)">업로드 실패: ${esc(err.message)}</span>`;
@@ -353,7 +365,7 @@
     // ===== 상세 =====
     let current = null;
 
-    let pdfDoc = null, pdfPages = [], curPage = 1;
+    let pdfDoc = null, pdfLib = null, pdfPages = [], curPage = 1, searchKw = "";
 
     async function openDetail(id) {
       show("detail");
@@ -416,6 +428,7 @@
       try {
         const pdfjsLib = await import("https://esm.sh/pdfjs-dist@4.7.76/build/pdf.min.mjs");
         pdfjsLib.GlobalWorkerOptions.workerSrc = "https://esm.sh/pdfjs-dist@4.7.76/build/pdf.worker.min.mjs";
+        pdfLib = pdfjsLib;
         pdfDoc = await pdfjsLib.getDocument(url).promise;
         $("pgTot").textContent = pdfDoc.numPages;
         $("pgNum").max = pdfDoc.numPages;
@@ -439,6 +452,35 @@
       const ctx = cv.getContext("2d");
       ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, cv.width, cv.height);
       await page.render({ canvasContext: ctx, viewport: vp }).promise;
+      if (searchKw) await highlightOnPage(page, vp, ctx, cv);
+    }
+
+    // 렌더된 페이지 위에 키워드를 노란색으로 표시하고, 첫 위치로 스크롤
+    async function highlightOnPage(page, vp, ctx, cv) {
+      try {
+        const kw = searchKw.toLowerCase();
+        const tc = await page.getTextContent();
+        const boxes = [];
+        for (const it of tc.items) {
+          if (!it.str || !it.str.toLowerCase().includes(kw)) continue;
+          const tx = pdfLib.Util.transform(vp.transform, it.transform);
+          const h = Math.hypot(tx[2], tx[3]) || (it.height * 1.8);
+          const w = (it.width || 0) * 1.8;
+          boxes.push({ x: tx[4], y: tx[5] - h, w, h });
+        }
+        ctx.save();
+        ctx.fillStyle = "rgba(255,214,0,0.42)";
+        ctx.strokeStyle = "rgba(220,150,0,0.9)"; ctx.lineWidth = 2;
+        for (const b of boxes) { ctx.fillRect(b.x - 1, b.y - 1, b.w + 2, b.h + 2); ctx.strokeRect(b.x - 1, b.y - 1, b.w + 2, b.h + 2); }
+        ctx.restore();
+        // 첫 하이라이트 위치로 스크롤(캔버스가 width:100%로 축소 표시되는 비율 반영)
+        if (boxes.length) {
+          const boxEl = cv.parentElement;                 // .pgCanvasBox
+          const ratio = cv.clientWidth / cv.width || 1;
+          const targetY = boxes[0].y * ratio;
+          boxEl.scrollTop = Math.max(0, targetY - boxEl.clientHeight / 2);
+        }
+      } catch (e) { /* 하이라이트 실패는 무시(페이지는 정상 표시) */ }
     }
 
     // 키워드 → 그 글자가 있는 PDF 페이지들을 찾아 목록으로, 클릭 시 해당 페이지 렌더
@@ -446,7 +488,8 @@
       q = (q || "").trim();
       const box = $("matchList");
       if (!box) return;
-      if (!q) { box.innerHTML = ""; return; }
+      searchKw = q;
+      if (!q) { box.innerHTML = ""; renderPdfPage(curPage); return; }
       const kw = q.toLowerCase();
       const matches = [];
       for (let i = 0; i < pdfPages.length; i++) {
