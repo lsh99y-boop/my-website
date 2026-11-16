@@ -281,7 +281,7 @@
       if (!list.length) { el.innerHTML = `<div class="empty">관련 매뉴얼이 없어요</div>`; return; }
       el.innerHTML = list.map((m) => `
         <div class="rec">
-          <div class="top"><span class="tag" style="background:color-mix(in srgb, var(--amber) 16%, var(--surface));color:var(--amber)">매뉴얼</span>${m.equip ? `<span class="tag">${esc(m.equip)}</span>` : ""}${m.maker ? `<span class="tag">${esc(m.maker)}</span>` : ""}${m.model ? `<span class="tag">${esc(m.model)}</span>` : ""}<span style="margin-left:auto">${m.hasKo ? "번역본" : "원문"}</span></div>
+          <div class="top"><span class="tag" style="background:color-mix(in srgb, var(--amber) 16%, var(--surface));color:var(--amber)">매뉴얼</span>${m.equip ? `<span class="tag">${esc(m.equip)}</span>` : ""}${m.maker ? `<span class="tag">${esc(m.maker)}</span>` : ""}${m.model ? `<span class="tag">${esc(m.model)}</span>` : ""}</div>
           <div class="model">${esc(m.title || "(제목 없음)")}</div>
           ${m.snippet ? `<div class="snip">${esc(m.snippet)}</div>` : ""}
           <div class="acts">
