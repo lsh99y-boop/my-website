@@ -105,7 +105,9 @@
     .drop .main b { color:var(--accent); }
     .drop .sub { font-size:.8rem; color:var(--muted); margin-top:3px; }
 
-    /* 페이지 OCR 뷰어 */
+    .aibox { border:1px solid var(--accent-border); background:var(--accent-weak); border-radius:12px; padding:12px; margin:8px 0; }
+
+    /* PDF 뷰어 */
     .pager { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:16px; border-top:1px solid var(--line); padding-top:14px; }
     .pager .mini { padding:7px 9px; width:auto; }
     .pager .pgnav { display:flex; align-items:center; gap:6px; margin-left:auto; font-size:.85rem; color:var(--muted); }
@@ -195,6 +197,7 @@
   <script type="module">
     import { saveManual, updateManual, deleteManual, getManual, listManuals } from "./manuals.js";
     import { uploadDoc, docUrl, removeDoc } from "./docStorage.js";
+    import { supabase } from "./supabaseClient.js";
 
     const APP_PIN = "7590";
     (function () {
@@ -409,6 +412,18 @@
         <div class="status" id="pdfStatus"></div>
         <div id="pdfOutline" style="margin:8px 0"></div>
         <div id="matchList" style="margin:6px 0"></div>
+        <div class="aibox">
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+            <b style="font-size:.9rem">🤖 지금 보는 페이지를 AI에게 묻기</b>
+            <select id="aiRange" class="mini" style="width:auto;padding:6px 9px"><option value="0">이 페이지만</option><option value="1">앞뒤 1쪽 포함(3쪽)</option></select>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:8px;align-items:stretch">
+            <textarea id="aiQ" rows="2" placeholder="예: 이 페이지를 한국어로 요약해줘 / 이 회로도에서 냉각 펌프 전원 계통을 설명해줘" style="flex:1;resize:vertical"></textarea>
+            <button class="btn" id="aiAsk">질문</button>
+          </div>
+          <div class="status" id="aiStatus"></div>
+          <div id="aiAnswer"></div>
+        </div>
         <div class="pgCanvasBox" style="margin-top:4px"><canvas id="pgCanvas"></canvas></div>
         <div class="hint">※ PDF 글자(텍스트 레이어) 기준으로 찾아요. 스캔 이미지 페이지(도면 등)는 글자가 없어 검색이 안 되고, 그땐 글자가 있는 페이지(목차 등)로 안내돼요.</div>
         ` : `<div class="hint" style="margin-top:14px">첨부된 PDF가 없어요.</div>`}
@@ -420,6 +435,8 @@
         $("pgPrev").addEventListener("click", () => renderPdfPage(curPage - 1));
         $("pgNext").addEventListener("click", () => renderPdfPage(curPage + 1));
         $("pgNum").addEventListener("change", () => renderPdfPage(parseInt($("pgNum").value, 10) || 1));
+        $("aiAsk").addEventListener("click", () => askAi(false));
+        $("aiQ").addEventListener("keydown", (e) => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) askAi(false); });
         initPdf(docUrl(r.doc_path), prefill);
       }
     }
@@ -483,6 +500,63 @@
           boxEl.scrollTop = Math.max(0, targetY - boxEl.clientHeight / 2);
         }
       } catch (e) { /* 하이라이트 실패는 무시(페이지는 정상 표시) */ }
+    }
+
+    // ===== AI에게 묻기 — 보고 있는 페이지 이미지를 서버 함수(manual-ai)로 보내 답을 받는다 =====
+    // 페이지 n 을 JPEG(base64)로. 긴 변이 1500px 근처가 되게 렌더(글자 판독용).
+    async function pageJpeg(n) {
+      const page = await pdfDoc.getPage(n);
+      const base = page.getViewport({ scale: 1 });
+      const scale = Math.min(2.2, 1500 / Math.max(base.width, base.height));
+      const vp = page.getViewport({ scale });
+      const cv = document.createElement("canvas");
+      cv.width = Math.floor(vp.width); cv.height = Math.floor(vp.height);
+      const ctx = cv.getContext("2d");
+      ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, cv.width, cv.height);
+      // intent:"print" → 화면 갱신(rAF)을 기다리지 않아, 탭이 뒤로 가 있어도 멈추지 않는다
+      await page.render({ canvasContext: ctx, viewport: vp, intent: "print" }).promise;
+      return cv.toDataURL("image/jpeg", 0.82).split(",")[1];
+    }
+    // 답변 속 (p.N) 을 눌러 그 페이지로 이동할 수 있게 링크로
+    function answerHtml(text) {
+      return esc(text).replace(/p\.\s?(\d{1,4})/g, (m, n) => `<a href="#" class="pgref" data-p="${n}" style="color:var(--accent);font-weight:700;text-decoration:none">${m}</a>`);
+    }
+    async function askAi(isRetry) {
+      const q = $("aiQ").value.trim();
+      const st = $("aiStatus");
+      if (!q) { st.textContent = "질문을 입력하세요."; st.className = "status err"; return; }
+      if (!pdfDoc) { st.textContent = "PDF가 아직 열리지 않았어요."; st.className = "status err"; return; }
+      const r = parseInt($("aiRange").value, 10) || 0;
+      const pages = [];
+      for (let n = curPage - r; n <= curPage + r; n++) if (n >= 1 && n <= pdfDoc.numPages) pages.push(n);
+      $("aiAsk").disabled = true;
+      st.className = "status"; st.textContent = `p.${pages.join(", ")} 준비 중…`;
+      try {
+        const images = [];
+        for (const n of pages) images.push({ page: n, data: await pageJpeg(n) });
+        st.textContent = "AI가 페이지를 읽는 중… (보통 10~40초)";
+        let pass = ""; try { pass = localStorage.getItem("ilji_ai_pass") || ""; } catch (e) {}
+        const { data, error } = await supabase.functions.invoke("manual-ai", {
+          body: { question: q, images, passcode: pass, title: current.title, maker: current.maker, model: current.model },
+        });
+        let res = data;
+        if (error) {
+          try { res = await error.context.json(); }
+          catch (e) { res = { error: /failed to send/i.test(error.message || "") ? "AI 서버 함수(manual-ai)에 연결하지 못했어요. 함수가 배포됐는지 확인하세요." : error.message }; }
+        }
+        if (res && res.code === "passcode" && !isRetry) {
+          const p = prompt("AI 기능 비밀번호를 입력하세요.");
+          if (p) { try { localStorage.setItem("ilji_ai_pass", p); } catch (e) {} $("aiAsk").disabled = false; return askAi(true); }
+          st.textContent = "비밀번호가 필요해요."; st.className = "status err"; return;
+        }
+        if (res && res.code === "passcode") { try { localStorage.removeItem("ilji_ai_pass"); } catch (e) {} }
+        if (!res || res.error || !res.answer) { st.textContent = (res && res.error) || "답변을 받지 못했어요."; st.className = "status err"; return; }
+        st.textContent = "";
+        $("aiAnswer").innerHTML = `<div class="viewer" style="margin-top:8px"><div class="vhead"><b style="font-size:.88rem">🤖 AI 답변</b><span style="margin-left:auto;font-size:.76rem;color:var(--muted)">근거: p.${pages.join(", ")}</span></div><div class="vbody" style="max-height:none">${answerHtml(res.answer)}</div></div><div class="hint">※ AI 답변은 틀릴 수 있어요. 수치·절차는 원본 페이지에서 꼭 확인하세요.</div>`;
+        $("aiAnswer").querySelectorAll(".pgref").forEach((a) => a.addEventListener("click", (e) => { e.preventDefault(); searchKw = ""; renderPdfPage(parseInt(a.dataset.p, 10)); }));
+      } catch (e) {
+        st.textContent = "AI 요청 실패: " + errText(e); st.className = "status err";
+      } finally { $("aiAsk").disabled = false; }
     }
 
     // PDF 북마크(아웃라인) → 섹션 바로가기 버튼. 클릭 시 그 섹션(도면) 페이지로 이동
