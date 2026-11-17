@@ -400,18 +400,14 @@
         </div>
         ${hasPdf ? `
         <div class="pager">
-          <b style="white-space:nowrap">📄 원본 PDF에서 찾기</b>
-          <input id="pdfq" placeholder="키워드 → 그 글자가 있는 PDF 페이지를 보여줘요" style="flex:1;min-width:150px;padding:7px 11px" value="${esc(prefill || "")}" />
-          <button class="btn sm" id="pdfFind">찾기</button>
-          <span class="pgnav">
+          <b style="white-space:nowrap">📄 원본 PDF</b>
+          <span class="pgnav" style="margin-left:auto">
             <button class="btn ghost sm" id="pgPrev">◀</button>
             <input id="pgNum" type="number" min="1" value="1" style="width:56px;text-align:center" /> / <span id="pgTot">…</span>
             <button class="btn ghost sm" id="pgNext">▶</button>
           </span>
         </div>
         <div class="status" id="pdfStatus"></div>
-        <div id="pdfOutline" style="margin:8px 0"></div>
-        <div id="matchList" style="margin:6px 0"></div>
         <div class="aibox">
           <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
             <b style="font-size:.9rem">🤖 AI에게 묻기</b>
@@ -425,23 +421,20 @@
           <div id="aiAnswer"></div>
         </div>
         <div class="pgCanvasBox" style="margin-top:4px"><canvas id="pgCanvas"></canvas></div>
-        <div class="hint">※ PDF 글자(텍스트 레이어) 기준으로 찾아요. 스캔 이미지 페이지(도면 등)는 글자가 없어 검색이 안 되고, 그땐 글자가 있는 페이지(목차 등)로 안내돼요.</div>
         ` : `<div class="hint" style="margin-top:14px">첨부된 PDF가 없어요.</div>`}
       `;
       $("delBtn").addEventListener("click", doDelete);
       if (hasPdf) {
-        $("pdfFind").addEventListener("click", () => searchPdf($("pdfq").value));
-        $("pdfq").addEventListener("keydown", (e) => { if (e.key === "Enter") searchPdf($("pdfq").value); });
         $("pgPrev").addEventListener("click", () => renderPdfPage(curPage - 1));
         $("pgNext").addEventListener("click", () => renderPdfPage(curPage + 1));
         $("pgNum").addEventListener("change", () => renderPdfPage(parseInt($("pgNum").value, 10) || 1));
         $("aiAsk").addEventListener("click", () => askAi());
         $("aiQ").addEventListener("keydown", (e) => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) askAi(); });
-        initPdf(docUrl(r.doc_path), prefill);
+        initPdf(docUrl(r.doc_path));
       }
     }
 
-    async function initPdf(url, prefill) {
+    async function initPdf(url) {
       $("pdfStatus").textContent = "PDF 불러오는 중…"; $("pdfStatus").className = "status";
       try {
         const pdfjsLib = await import("https://esm.sh/pdfjs-dist@4.7.76/build/pdf.min.mjs");
@@ -452,9 +445,8 @@
         $("pgNum").max = pdfDoc.numPages;
         pdfPages = String(current.doc_text || "").split("\n");   // 저장된 원문(페이지당 한 줄) 재사용
         $("pdfStatus").textContent = "";
-        renderOutline();                 // 북마크는 페이지 렌더와 무관하게 바로 표시
-        if (prefill && prefill.trim()) searchPdf(prefill);   // prefill이 있으면 매치 페이지를 렌더
-        else renderPdfPage(1);
+        loadOutline();                   // 북마크는 AI "문서 전체에서 찾기"가 쓰려고 미리 읽어둠
+        renderPdfPage(1);
       } catch (e) {
         $("pdfStatus").textContent = "PDF 로드 실패: " + errText(e); $("pdfStatus").className = "status err";
       }
@@ -646,10 +638,10 @@
       st.className = "status err";
     }
 
-    // PDF 북마크(아웃라인) → 섹션 바로가기 버튼. 클릭 시 그 섹션(도면) 페이지로 이동
-    async function renderOutline() {
-      const host = $("pdfOutline"); if (!host) return;
-      host.innerHTML = "";
+    // PDF 북마크(아웃라인)를 읽어 pdfOutlineRows 에 담아둔다.
+    // (화면에 표시하지 않음 — "문서 전체에서 찾기" AI가 페이지를 고를 때만 사용)
+    async function loadOutline() {
+      pdfOutlineRows = [];
       let outline = null;
       try { outline = await pdfDoc.getOutline(); } catch (e) {}
       if (!outline || !outline.length) return;
@@ -663,43 +655,7 @@
         }
       }
       await walk(outline, 0);
-      const usable = rows.filter((r) => r.page);
-      pdfOutlineRows = usable;
-      if (!usable.length) return;
-      host.innerHTML = `<details open><summary style="cursor:pointer;font-weight:700;font-size:.88rem;padding:4px 0">📑 섹션 바로가기 (PDF 북마크) · 클릭하면 그 도면 페이지로 이동</summary>
-        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">` +
-        usable.map((r) => `<button class="btn ghost sm olrow" data-p="${r.page}" style="margin-left:${r.depth * 12}px"><span style="font-weight:600">${esc(r.title)}</span> <span style="color:var(--muted)">p.${r.page}</span></button>`).join("") +
-        `</div></details>`;
-      host.querySelectorAll(".olrow").forEach((b) => b.addEventListener("click", () => { searchKw = ""; renderPdfPage(parseInt(b.dataset.p, 10)); }));
-    }
-
-    // 키워드 → 그 글자가 있는 PDF 페이지들을 찾아 목록으로, 클릭 시 해당 페이지 렌더
-    function searchPdf(q) {
-      q = (q || "").trim();
-      const box = $("matchList");
-      if (!box) return;
-      searchKw = q;
-      if (!q) { box.innerHTML = ""; renderPdfPage(curPage); return; }
-      const kw = q.toLowerCase();
-      const matches = [];
-      for (let i = 0; i < pdfPages.length; i++) {
-        const line = pdfPages[i];
-        if (!line) continue;
-        const t = line.replace(/\s+/g, " ");
-        const idx = t.toLowerCase().indexOf(kw);
-        if (idx < 0) continue;
-        const s = Math.max(0, idx - 40), e = Math.min(t.length, idx + kw.length + 70);
-        const snip = (s > 0 ? "… " : "") + esc(t.slice(s, idx)) + `<mark style="${MARK}">` + esc(t.slice(idx, idx + q.length)) + `</mark>` + esc(t.slice(idx + q.length, e)) + (e < t.length ? " …" : "");
-        matches.push({ page: i + 1, snip });
-      }
-      if (!matches.length) {
-        box.innerHTML = `<div class="status err">PDF 글자에서 '${esc(q)}'를 찾지 못했어요. (스캔 이미지 페이지는 글자가 없어 검색이 안 돼요 — 원본 PDF를 열어 확인하세요.)</div>`;
-        return;
-      }
-      box.innerHTML = `<div class="status ok">${matches.length}개 페이지에서 발견 — 클릭하면 그 PDF 페이지를 보여줘요</div>` +
-        matches.map((m) => `<div class="card matchrow" data-p="${m.page}" style="padding:9px 12px;margin-bottom:6px;cursor:pointer"><b style="color:var(--accent)">p.${m.page}</b> &nbsp;<span style="font-size:.9rem">${m.snip}</span></div>`).join("");
-      box.querySelectorAll(".matchrow").forEach((el) => el.addEventListener("click", () => renderPdfPage(parseInt(el.dataset.p, 10))));
-      renderPdfPage(matches[0].page);   // 첫 매치 페이지로 바로 이동
+      pdfOutlineRows = rows.filter((r) => r.page);
     }
 
     async function doDelete() {
