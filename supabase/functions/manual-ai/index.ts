@@ -164,25 +164,34 @@ async function callChatbot(question: string, history: { role: string; content: s
     { role: "user", content: question },
   ];
   const payload = JSON.stringify({ messages: msgs, stream: false });
+  // 게이트웨이는 보통 경로 끝 '/'를 쓰므로 그 형태를 먼저 시도한다.
   const paths = [
-    `${CHATBOT_BASE}/${CHATBOT_ID}/chat/completions`,
     `${CHATBOT_BASE}/${CHATBOT_ID}/chat/completions/`,
+    `${CHATBOT_BASE}/${CHATBOT_ID}/chat/completions`,
   ];
+  const doFetch = (url: string) => fetch(url, {
+    method: "POST",
+    headers: { "Authorization": `Bearer ${API_KEY}`, "Content-Type": "application/json" },
+    body: payload,
+  });
   let lastRes: Response | null = null;
+  let lastErr: unknown = null;
   for (const url of paths) {
-    const res = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: payload,
-    });
-    // 경로 끝 '/' 문제(404/405/리다이렉트)면 다음 형태로 재시도
-    if ([301, 302, 307, 308, 404, 405].includes(res.status)) { lastRes = res; continue; }
-    return res;
+    // HTTP/2 'refused stream' 같은 일시적 전송 오류는 짧게 쉬고 다시 시도
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        const res = await doFetch(url);
+        // 경로 끝 '/' 문제(404/405/리다이렉트)면 다음 경로 형태로
+        if ([301, 302, 307, 308, 404, 405].includes(res.status)) { lastRes = res; break; }
+        return res;
+      } catch (e) {
+        lastErr = e;
+        if (attempt < 3) await new Promise((r) => setTimeout(r, attempt * 700));
+      }
+    }
   }
-  return lastRes!;
+  if (lastRes) return lastRes;
+  throw lastErr ?? new Error("챗봇 서버에 연결하지 못했어요.");
 }
 
 Deno.serve(async (req) => {
