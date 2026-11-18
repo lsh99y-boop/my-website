@@ -148,6 +148,18 @@
 
     <!-- 목록 -->
     <section id="viewList" style="margin-top:14px">
+      <div class="panel" style="border-color:var(--accent-border)">
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <b style="font-size:.95rem">🤖 매뉴얼 AI 검색</b>
+          <span style="font-size:.76rem;color:var(--muted)">사내 AI가 등록된 전체 매뉴얼에서 찾아 답합니다</span>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:10px;align-items:stretch">
+          <textarea id="cbQ" rows="2" placeholder="예: 식장산 TV 송신기 냉각팬 교체주기는? / 엑사이터 출력 조정 절차 / VSWR 경보 대처법" style="flex:1;resize:vertical"></textarea>
+          <button class="btn" id="cbAsk">질문</button>
+        </div>
+        <div class="status" id="cbStatus"></div>
+        <div id="cbAnswer"></div>
+      </div>
       <div class="panel">
         <div class="filters">
           <div class="f" style="flex:3"><label>검색 (제목 · 모델 · 제조사 · PDF 원문)</label><input id="fq" placeholder="예: cooling fan, 엑사이터, VSWR, 교체주기" /></div>
@@ -281,6 +293,34 @@
     // 실시간 검색(타이핑하는 대로, 350ms 디바운스)
     let searchTimer;
     $("fq").addEventListener("input", () => { clearTimeout(searchTimer); searchTimer = setTimeout(loadList, 350); });
+
+    // ===== 매뉴얼 AI 검색 — 사내 기관 지식 챗봇(전체 매뉴얼 RAG)에 바로 질문 =====
+    async function cbAsk(afterPass) {
+      const q = $("cbQ").value.trim();
+      const st = $("cbStatus");
+      if (!q) { st.textContent = "질문을 입력하세요."; st.className = "status err"; return; }
+      $("cbAsk").disabled = true; st.className = "status"; st.textContent = "사내 AI가 매뉴얼에서 찾는 중… (보통 10~30초)";
+      $("cbAnswer").innerHTML = "";
+      try {
+        const res = await callAi({ mode: "chatbot", question: q });
+        if (res.error || !res.answer) { st.textContent = res.error || "답변을 받지 못했어요."; st.className = "status err"; return; }
+        st.textContent = "";
+        $("cbAnswer").innerHTML = `<div class="viewer" style="margin-top:8px"><div class="vhead"><b style="font-size:.88rem">🤖 AI 답변</b><span style="margin-left:auto;font-size:.76rem;color:var(--muted)">사내 AI · 매뉴얼 지식</span></div><div class="vbody" style="max-height:none">${answerHtml(res.answer)}</div></div><div class="hint">※ AI 답변은 틀릴 수 있어요. 수치·절차는 원본 매뉴얼에서 꼭 확인하세요.</div>`;
+      } catch (e) {
+        if (e === NEED_PASS) cbShowPass(afterPass === true);
+        else { st.textContent = "AI 요청 실패: " + errText(e); st.className = "status err"; }
+      } finally { $("cbAsk").disabled = false; }
+    }
+    function cbShowPass(wrong) {
+      const st = $("cbStatus"); st.className = "status";
+      st.innerHTML = `<span style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:4px"><span style="color:var(--danger)">${wrong ? "비밀번호가 맞지 않아요. 다시 입력하세요." : "AI 기능 비밀번호를 입력하세요."}</span><input id="cbPass" type="password" autocomplete="off" style="width:150px;padding:7px 10px" /><button class="btn sm" id="cbPassOk">확인</button></span>`;
+      const go = () => { const v = $("cbPass").value.trim(); if (!v) return; try { localStorage.setItem("ilji_ai_pass", v); } catch (e) {} cbAsk(true); };
+      $("cbPassOk").addEventListener("click", go);
+      $("cbPass").addEventListener("keydown", (e) => { if (e.key === "Enter") go(); });
+      $("cbPass").focus();
+    }
+    $("cbAsk").addEventListener("click", () => cbAsk());
+    $("cbQ").addEventListener("keydown", (e) => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) cbAsk(); });
 
     // ===== 등록 =====
     let docInfo = null; // {path, text, size}

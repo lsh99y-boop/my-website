@@ -21,6 +21,9 @@ const PASSCODE = Deno.env.get("AI_PASSCODE") ?? "";
 const DAILY_LIMIT = parseInt(Deno.env.get("AI_DAILY_LIMIT") ?? "300", 10) || 300;
 const MODEL = Deno.env.get("AI_MODEL") ?? "claude-sonnet-5-5";
 const GATEWAY_BASE = Deno.env.get("AI_GATEWAY_BASE") ?? "https://api.baze.co/v1/gateway/claude";
+// 사내 AI "기관 지식 챗봇"(매뉴얼 RAG) — OpenAI 호환 엔드포인트
+const CHATBOT_ID = Deno.env.get("AI_CHATBOT_ID") ?? "57288";
+const CHATBOT_BASE = Deno.env.get("AI_CHATBOT_BASE") ?? "https://api.baze.co/v1/gateway/chatbots";
 const ALLOWED_ORIGINS = (Deno.env.get("AI_ALLOWED_ORIGINS") ??
   "https://my-website-two-blond-40.vercel.app,http://localhost:8777,http://localhost:3000")
   .split(",").map((s) => s.trim()).filter(Boolean);
@@ -145,6 +148,43 @@ function apiErrorResponse(error: unknown, origin: string | null) {
   return json({ error: "AI 호출 실패: " + (error instanceof Error ? error.message : String(error)) }, 502, origin);
 }
 
+// 사내 "기관 지식 챗봇"(매뉴얼 RAG) 호출 — OpenAI 호환. 경로 끝 '/' 유무를 둘 다 시도한다.
+const CHATBOT_SYSTEM = [
+  "사용자는 방송 송·중계소 현장의 방송 기술 엔지니어입니다.",
+  "업로드된 장비 매뉴얼(지식)에서 찾은 내용만 근거로 한국어로 답하세요. 매뉴얼에 없는 수치·절차를 추측해 채우지 마세요.",
+  "부품번호·단자명·수치와 단위·도면번호는 원문 표기 그대로 적고, 가능하면 어느 매뉴얼/섹션에서 나온 내용인지 함께 밝히세요.",
+  "지식에서 찾을 수 없으면 '등록된 매뉴얼에서 해당 내용을 찾지 못했습니다'라고 말하세요.",
+].join("\n");
+
+async function callChatbot(question: string, history: { role: string; content: string }[]) {
+  const msgs = [
+    { role: "system", content: CHATBOT_SYSTEM },
+    ...history.filter((m) => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string")
+      .slice(-6).map((m) => ({ role: m.role, content: m.content })),
+    { role: "user", content: question },
+  ];
+  const payload = JSON.stringify({ messages: msgs, stream: false });
+  const paths = [
+    `${CHATBOT_BASE}/${CHATBOT_ID}/chat/completions`,
+    `${CHATBOT_BASE}/${CHATBOT_ID}/chat/completions/`,
+  ];
+  let lastRes: Response | null = null;
+  for (const url of paths) {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: payload,
+    });
+    // 경로 끝 '/' 문제(404/405/리다이렉트)면 다음 형태로 재시도
+    if ([301, 302, 307, 308, 404, 405].includes(res.status)) { lastRes = res; continue; }
+    return res;
+  }
+  return lastRes!;
+}
+
 Deno.serve(async (req) => {
   const origin = req.headers.get("origin");
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors(origin) });
@@ -155,6 +195,7 @@ Deno.serve(async (req) => {
     mode?: string; question?: string; context?: string; passcode?: string; title?: string; maker?: string; model?: string;
     images?: { page: number; data: string }[];
     messages?: Anthropic.MessageParam[];
+    history?: { role: string; content: string }[];
   };
   try { body = await req.json(); } catch { return json({ error: "요청 형식이 잘못됐어요." }, 400, origin); }
 
@@ -166,11 +207,12 @@ Deno.serve(async (req) => {
   // 2) 입력 검증
   const isDoc = body.mode === "doc";
   const isChat = body.mode === "chat";
+  const isChatbot = body.mode === "chatbot";
   const question = (body.question ?? "").trim();
   const context = (body.context ?? "").toString();
   const images = Array.isArray(body.images) ? body.images : [];
   const messages = Array.isArray(body.messages) ? body.messages : [];
-  if (isChat) {
+  if (isChat || isChatbot) {
     if (!question) return json({ error: "질문을 입력하세요." }, 400, origin);
     if (question.length > MAX_QUESTION) return json({ error: `질문은 ${MAX_QUESTION}자 이내로 써주세요.` }, 400, origin);
   } else if (isDoc) {
@@ -201,6 +243,31 @@ Deno.serve(async (req) => {
     if (!ok) return json({ code: "limit", error: `오늘 AI 사용 한도(${DAILY_LIMIT}회)를 다 썼어요. 내일 다시 시도하세요.` }, 429, origin);
   } catch (e) {
     return json({ error: "사용량 확인 실패: " + (e instanceof Error ? e.message : String(e)) }, 500, origin);
+  }
+
+  // 4-C) 사내 기관 지식 챗봇(매뉴얼 RAG)에 직접 질문 — 챗봇이 자기 지식에서 찾아 답한다
+  if (isChatbot) {
+    try {
+      const res = await callChatbot(question, Array.isArray(body.history) ? body.history : []);
+      const text = await res.text();
+      if (!res.ok) {
+        let msg = text;
+        try { const j = JSON.parse(text); msg = j.error?.message || j.error || j.message || text; } catch { /* 원문 사용 */ }
+        if (res.status === 401 || res.status === 403) {
+          return json({ error: "챗봇 API 키/권한 오류예요. AI_GATEWAY_KEY와 챗봇의 'API 접근 허용'을 확인하세요." }, 502, origin);
+        }
+        return json({ error: `챗봇 서버 오류(${res.status}): ${String(msg).slice(0, 300)}` }, 502, origin);
+      }
+      let data: Record<string, unknown> = {};
+      try { data = JSON.parse(text); } catch { return json({ error: "챗봇 응답을 해석할 수 없어요: " + text.slice(0, 200) }, 502, origin); }
+      const choices = (data.choices as Array<Record<string, unknown>> | undefined) ?? [];
+      const message = (choices[0]?.message as Record<string, unknown> | undefined) ?? {};
+      const answer = (typeof message.content === "string" ? message.content : "").trim();
+      if (!answer) return json({ error: "챗봇이 빈 답을 보냈어요." }, 502, origin);
+      return json({ answer, model: data.model ?? `chatbot:${CHATBOT_ID}`, usage: data.usage }, 200, origin);
+    } catch (e) {
+      return json({ error: "챗봇 호출 실패: " + (e instanceof Error ? e.message : String(e)) }, 502, origin);
+    }
   }
 
   // 4-0) 홈 AI 검색 요약: 검색 결과(context)만 근거로 한 번에 답한다
