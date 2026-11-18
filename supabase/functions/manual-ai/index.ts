@@ -55,6 +55,15 @@ const DOC_SYSTEM = [
   "끝내 찾지 못했으면 찾지 못했다고 밝히고, 어디까지 확인했는지와 사용자가 직접 넘겨볼 만한 페이지 범위를 알려주세요.",
 ].join("\n");
 
+// 홈 "AI 검색" 요약용 — 정비사례·일일업무일지·장비 매뉴얼 검색 결과만 근거로 답한다
+const SEARCH_SYSTEM = [
+  "당신은 방송 송신설비의 정비사례·일일업무일지·장비 매뉴얼을 분석하는 정비 지식 검색 AI입니다.",
+  "반드시 아래에 제공된 검색 결과(정비사례/일일업무일지/장비 매뉴얼)에 있는 내용만 근거로 답하세요.",
+  "검색 결과에 없는 고장 원인이나 조치방법을 추측하거나 지어내지 마세요. 정보가 없으면 '등록된 정보가 없습니다'라고 하세요.",
+  "같은 시설·장비·날짜가 정비사례와 일지에 함께 나오면 하나의 정비 이력으로 연결해 설명하세요.",
+  "한국어로 간결하게 답하고, 근거가 된 날짜·시설·장비를 함께 표시하세요. 먼저 핵심 요약을 쓰고, 이어서 주요 내용을 정리하세요.",
+].join("\n");
+
 const VIEW_PAGES_TOOL: Anthropic.Tool = {
   name: "view_pages",
   description:
@@ -143,7 +152,7 @@ Deno.serve(async (req) => {
   if (!API_KEY) return json({ error: "서버에 AI_GATEWAY_KEY 비밀값이 설정되지 않았어요." }, 500, origin);
 
   let body: {
-    mode?: string; question?: string; passcode?: string; title?: string; maker?: string; model?: string;
+    mode?: string; question?: string; context?: string; passcode?: string; title?: string; maker?: string; model?: string;
     images?: { page: number; data: string }[];
     messages?: Anthropic.MessageParam[];
   };
@@ -156,10 +165,15 @@ Deno.serve(async (req) => {
 
   // 2) 입력 검증
   const isDoc = body.mode === "doc";
+  const isChat = body.mode === "chat";
   const question = (body.question ?? "").trim();
+  const context = (body.context ?? "").toString();
   const images = Array.isArray(body.images) ? body.images : [];
   const messages = Array.isArray(body.messages) ? body.messages : [];
-  if (isDoc) {
+  if (isChat) {
+    if (!question) return json({ error: "질문을 입력하세요." }, 400, origin);
+    if (question.length > MAX_QUESTION) return json({ error: `질문은 ${MAX_QUESTION}자 이내로 써주세요.` }, 400, origin);
+  } else if (isDoc) {
     if (!messages.length || messages[0]?.role !== "user") return json({ error: "대화 형식이 잘못됐어요." }, 400, origin);
     if (messages.length > DOC_MAX_MESSAGES) return json({ error: "탐색 단계가 너무 많아요. 질문을 좁혀서 다시 해보세요." }, 400, origin);
     try {
@@ -187,6 +201,27 @@ Deno.serve(async (req) => {
     if (!ok) return json({ code: "limit", error: `오늘 AI 사용 한도(${DAILY_LIMIT}회)를 다 썼어요. 내일 다시 시도하세요.` }, 429, origin);
   } catch (e) {
     return json({ error: "사용량 확인 실패: " + (e instanceof Error ? e.message : String(e)) }, 500, origin);
+  }
+
+  // 4-0) 홈 AI 검색 요약: 검색 결과(context)만 근거로 한 번에 답한다
+  if (isChat) {
+    try {
+      const response = await anthropic.messages.create({
+        model: MODEL,
+        max_tokens: 4000,
+        output_config: { effort: "low" },
+        system: SEARCH_SYSTEM,
+        messages: [{ role: "user", content: `질문: ${question}\n\n[검색된 실제 기록 — 이 내용만 근거로 답하세요]\n${context.slice(0, 40000) || "(검색 결과 없음)"}` }],
+      });
+      if (response.stop_reason === "refusal") {
+        return json({ error: "AI가 이 요청에는 답하지 않았어요." }, 200, origin);
+      }
+      let answer = "";
+      for (const block of response.content) if (block.type === "text") answer += block.text;
+      return json({ answer: answer.trim(), model: response.model, usage: response.usage }, 200, origin);
+    } catch (error) {
+      return apiErrorResponse(error, origin);
+    }
   }
 
   // 4-A) 문서 전체 탐색: 대화를 그대로 전달하고, 응답(도구 요청 포함)을 웹앱에 돌려준다

@@ -121,9 +121,8 @@
       </div>
       <div class="chips" id="chips"></div>
       <div class="aibar">
-        <button class="ai-toggle" id="aiToggle">🤖 AI 분석 켜기</button>
-        <span id="aiState">AI 요약은 선택 사항이에요 (모델 약 1GB 다운로드 · WebGPU 필요)</span>
-        <div class="prog" id="prog"><i id="progFill"></i></div>
+        <label style="display:flex;align-items:center;gap:7px;cursor:pointer"><input type="checkbox" id="aiOn" checked /> 🤖 AI 요약 함께 보기</label>
+        <span id="aiState">검색 결과를 AI가 한국어로 요약해 줍니다.</span>
       </div>
     </div>
 
@@ -152,6 +151,7 @@
   <script type="module">
     import { knowledgeSearch, buildContext, extractConditions } from "./aiSearch.js";
     import { docUrl } from "./docStorage.js";
+    import { supabase } from "./supabaseClient.js";
 
     const APP_PIN = "7590";
     (function () {
@@ -185,63 +185,42 @@
     $("chips").innerHTML = SUGGEST.map((s) => `<span class="chip">${esc(s)}</span>`).join("");
     $("chips").querySelectorAll(".chip").forEach((c) => c.addEventListener("click", () => { $("q").value = c.textContent; doSearch(); }));
 
-    // ===== WebLLM (브라우저 내 모델) =====
-    let engine = null, aiLoading = false;
-    async function loadAI() {
-      if (engine || aiLoading) return;
-      if (!navigator.gpu) { $("aiState").innerHTML = `<span style="color:var(--danger)">이 브라우저는 WebGPU 미지원 — 크롬/엣지(PC)에서 AI 요약을 쓸 수 있어요. 검색 결과는 그대로 보여요.</span>`; return; }
-      aiLoading = true;
-      $("aiToggle").disabled = true; $("aiToggle").textContent = "🤖 불러오는 중…";
-      $("prog").style.display = "block";
-      try {
-        const webllm = await import("https://esm.run/@mlc-ai/web-llm");
-        const model = "Qwen2.5-1.5B-Instruct-q4f16_1-MLC";
-        engine = await webllm.CreateMLCEngine(model, {
-          initProgressCallback: (p) => {
-            $("aiState").textContent = p.text || "모델 준비 중…";
-            if (typeof p.progress === "number") $("progFill").style.width = Math.round(p.progress * 100) + "%";
-          },
-        });
-        $("aiState").innerHTML = `<b style="color:var(--green)">✅ AI 준비됨</b> — 이제 검색하면 AI 요약이 함께 나와요`;
-        $("aiToggle").textContent = "🤖 AI 켜짐";
-        $("prog").style.display = "none";
-      } catch (e) {
-        $("aiState").innerHTML = `<span style="color:var(--danger)">AI 로드 실패: ${esc(e.message || String(e))}</span>`;
-        $("aiToggle").disabled = false; $("aiToggle").textContent = "🤖 다시 시도";
-      } finally { aiLoading = false; }
+    // ===== AI 요약 (사내 Baze — 서버 함수 manual-ai 의 chat 모드) =====
+    const NEED_PASS = new Error("passcode");
+    async function callChat(question, ctx) {
+      let pass = ""; try { pass = localStorage.getItem("ilji_ai_pass") || ""; } catch (e) {}
+      const { data, error } = await supabase.functions.invoke("manual-ai", { body: { mode: "chat", question, context: ctx, passcode: pass } });
+      let res = data;
+      if (error) {
+        try { res = await error.context.json(); }
+        catch (e) { res = { error: /failed to send/i.test(error.message || "") ? "AI 서버 함수(manual-ai)에 연결하지 못했어요. 함수가 배포됐는지 확인하세요." : error.message }; }
+      }
+      if (res && res.code === "passcode") { try { localStorage.removeItem("ilji_ai_pass"); } catch (e) {} throw NEED_PASS; }
+      return res || { error: "응답이 없어요." };
     }
-    $("aiToggle").addEventListener("click", loadAI);
-
-    const SYS = [
-      "너는 방송 송신설비의 정비사례·일일업무일지·장비 매뉴얼을 분석하는 정비 지식 검색 AI다.",
-      "반드시 아래에 제공된 검색 결과(정비사례/일일업무일지/장비 매뉴얼)에 있는 내용만 근거로 답한다.",
-      "검색 결과에 없는 고장 원인이나 조치방법을 추측하거나 지어내지 않는다.",
-      "정보가 없으면 '등록된 정보가 없습니다'라고 표현한다.",
-      "같은 시설·장비·날짜가 정비사례와 일지에 함께 나오면 하나의 정비 이력으로 연결해 설명한다.",
-      "답변은 한국어로 간결하게. 근거가 된 날짜·시설·장비를 함께 표시한다.",
-      "형식: [AI 분석] 요약 → [주요 내용] 정리. 데이터가 없는 항목은 쓰지 않는다.",
-    ].join(" ");
-
-    async function aiSummarize(question, faults, logs, manuals = []) {
-      if (!engine) return;
-      if (!faults.length && !logs.length && !manuals.length) { renderAnswer("[AI 분석]\n검색 결과가 없어 분석할 데이터가 없습니다."); return; }
+    function showPassForm(wrong, question, faults, logs, manuals) {
+      $("aiAnswer").innerHTML = `<div class="ai-answer"><div class="h">🤖 AI 요약</div><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">${wrong ? '<span style="color:var(--danger)">비밀번호가 맞지 않아요. 다시 입력하세요.</span>' : "AI 기능 비밀번호를 입력하세요."}<input id="aiPass" type="password" autocomplete="off" style="padding:8px 11px;border-radius:8px;border:1px solid var(--line-strong);background:var(--surface);color:var(--ink);width:160px"/><button class="btn-primary" id="aiPassOk" style="padding:8px 15px">확인</button></div></div>`;
+      const go = () => { const v = $("aiPass").value.trim(); if (!v) return; try { localStorage.setItem("ilji_ai_pass", v); } catch (e) {} aiSummarize(question, faults, logs, manuals, true); };
+      $("aiPassOk").addEventListener("click", go);
+      $("aiPass").addEventListener("keydown", (e) => { if (e.key === "Enter") go(); });
+      $("aiPass").focus();
+    }
+    async function aiSummarize(question, faults, logs, manuals = [], afterPass) {
+      if (!$("aiOn").checked) return;
+      if (!faults.length && !logs.length && !manuals.length) { renderAnswer("검색 결과가 없어 요약할 내용이 없습니다."); return; }
       const ctx = buildContext(faults, logs, manuals);
-      renderAnswer("[AI 분석]\n작성 중…");
+      renderAnswer("AI가 검색 결과를 요약하는 중… (10초 안팎)");
       try {
-        const res = await engine.chat.completions.create({
-          messages: [
-            { role: "system", content: SYS },
-            { role: "user", content: `질문: ${question}\n\n[검색된 실제 기록 — 이 내용만 근거로 답하세요]\n${ctx}` },
-          ],
-          temperature: 0.2, max_tokens: 700,
-        });
-        renderAnswer(res.choices?.[0]?.message?.content || "(응답 없음)");
+        const res = await callChat(question, ctx);
+        if (res.error || !res.answer) { renderAnswer("AI 요약 실패: " + (res.error || "응답 없음") + "\n아래 검색 결과를 참고하세요."); return; }
+        renderAnswer(res.answer);
       } catch (e) {
-        renderAnswer(`[AI 분석]\nAI 요약 오류: ${e.message || e}. 아래 검색 결과를 참고하세요.`);
+        if (e === NEED_PASS) showPassForm(afterPass === true, question, faults, logs, manuals);
+        else renderAnswer("AI 요약 오류: " + errText(e) + "\n아래 검색 결과를 참고하세요.");
       }
     }
     function renderAnswer(text) {
-      $("aiAnswer").innerHTML = `<div class="ai-answer"><div class="h">🤖 AI 분석</div>${esc(text).replace(/^\[AI 분석\]\s*/,"")}</div>`;
+      $("aiAnswer").innerHTML = `<div class="ai-answer"><div class="h">🤖 AI 요약</div>${esc(text)}</div>`;
     }
 
     // ===== 렌더 =====
@@ -306,7 +285,7 @@
         if (cond.topics.length) bits.push("키워드:" + cond.topics.join(","));
         if (cond.from) bits.push("기간:" + cond.from + (cond.to ? "~" + cond.to : "~"));
         setStatus(`정비사례 ${faults.length}건 · 일지 ${logs.length}건 · 매뉴얼 ${(manuals || []).length}건` + (bits.length ? ` (인식: ${bits.join(" / ")})` : ""));
-        if (engine) aiSummarize(question, faults, logs, manuals || []);
+        aiSummarize(question, faults, logs, manuals || []);
       } catch (e) {
         setStatus("검색 오류: " + errText(e), true);
       } finally { $("go").disabled = false; }
